@@ -1,0 +1,274 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+*"
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  BINARY_NAME: chesstui
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Build matrix: 5 targets
+  # ---------------------------------------------------------------------------
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macOS x86_64
+          - target: x86_64-apple-darwin
+            runner: macos-13          # Intel runner
+            archive: tar.gz
+
+          # macOS aarch64
+          - target: aarch64-apple-darwin
+            runner: macos-14          # Apple Silicon runner
+            archive: tar.gz
+
+          # Linux x86_64 (musl, static)
+          - target: x86_64-unknown-linux-musl
+            runner: ubuntu-latest
+            archive: tar.gz
+
+          # Linux aarch64 (musl, static, cross-compiled)
+          - target: aarch64-unknown-linux-musl
+            runner: ubuntu-latest
+            archive: tar.gz
+
+          # Windows x86_64
+          - target: x86_64-pc-windows-msvc
+            runner: windows-latest
+            archive: zip
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      # ---- Linux cross-compilation dependencies ----
+      - name: Install musl-tools (x86_64 Linux)
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - name: Install cross (aarch64 Linux)
+        if: matrix.target == 'aarch64-unknown-linux-musl'
+        run: cargo install cross --git https://github.com/cross-rs/cross
+
+      # ---- Build ----
+      - name: Build (native)
+        if: matrix.target != 'aarch64-unknown-linux-musl'
+        run: cargo build --release --locked --target ${{ matrix.target }}
+
+      - name: Build (cross - aarch64 Linux)
+        if: matrix.target == 'aarch64-unknown-linux-musl'
+        run: cross build --release --locked --target ${{ matrix.target }}
+
+      # ---- Package ----
+      - name: Package (Unix)
+        if: matrix.archive == 'tar.gz'
+        shell: bash
+        run: |
+          STAGING="${{ env.BINARY_NAME }}-${{ github.ref_name }}-${{ matrix.target }}"
+          mkdir -p "${STAGING}"
+          cp "target/${{ matrix.target }}/release/${{ env.BINARY_NAME }}" "${STAGING}/"
+          cp README.md LICENSE* "${STAGING}/" 2>/dev/null || true
+          tar czf "${STAGING}.tar.gz" "${STAGING}"
+          echo "ASSET=${STAGING}.tar.gz" >> "$GITHUB_ENV"
+
+      - name: Package (Windows)
+        if: matrix.archive == 'zip'
+        shell: pwsh
+        run: |
+          $staging = "${{ env.BINARY_NAME }}-${{ github.ref_name }}-${{ matrix.target }}"
+          New-Item -ItemType Directory -Path $staging
+          Copy-Item "target/${{ matrix.target }}/release/${{ env.BINARY_NAME }}.exe" $staging
+          Copy-Item "README.md" $staging -ErrorAction SilentlyContinue
+          Compress-Archive -Path $staging -DestinationPath "${staging}.zip"
+          echo "ASSET=${staging}.zip" >> $env:GITHUB_ENV
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: ${{ env.ASSET }}
+          retention-days: 1
+
+  # ---------------------------------------------------------------------------
+  # Create GitHub Release with all binaries + checksums
+  # ---------------------------------------------------------------------------
+  release:
+    name: Publish release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Collect assets and generate checksums
+        run: |
+          mkdir -p release
+          find artifacts -type f \( -name "*.tar.gz" -o -name "*.zip" \) -exec cp {} release/ \;
+          cd release
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: release/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ---------------------------------------------------------------------------
+  # macOS universal binary (fat binary: x86_64 + aarch64)
+  # ---------------------------------------------------------------------------
+  universal-macos:
+    name: macOS universal binary
+    needs: build
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download macOS x86_64
+        uses: actions/download-artifact@v4
+        with:
+          name: x86_64-apple-darwin
+          path: artifacts/x86
+
+      - name: Download macOS aarch64
+        uses: actions/download-artifact@v4
+        with:
+          name: aarch64-apple-darwin
+          path: artifacts/arm
+
+      - name: Create universal binary
+        run: |
+          # Extract both archives
+          tar xzf artifacts/x86/*.tar.gz -C artifacts/x86
+          tar xzf artifacts/arm/*.tar.gz -C artifacts/arm
+
+          # Find the actual binaries
+          X86_BIN=$(find artifacts/x86 -name "${{ env.BINARY_NAME }}" -type f ! -name "*.tar.gz")
+          ARM_BIN=$(find artifacts/arm -name "${{ env.BINARY_NAME }}" -type f ! -name "*.tar.gz")
+
+          # Create universal binary with lipo
+          STAGING="${{ env.BINARY_NAME }}-${{ github.ref_name }}-universal-apple-darwin"
+          mkdir -p "${STAGING}"
+          lipo -create "$X86_BIN" "$ARM_BIN" -output "${STAGING}/${{ env.BINARY_NAME }}"
+          chmod +x "${STAGING}/${{ env.BINARY_NAME }}"
+
+          # Verify it contains both architectures
+          lipo -info "${STAGING}/${{ env.BINARY_NAME }}"
+
+          cp README.md LICENSE* "${STAGING}/" 2>/dev/null || true
+          tar czf "${STAGING}.tar.gz" "${STAGING}"
+
+      - name: Upload universal binary to release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ASSET="${{ env.BINARY_NAME }}-${{ github.ref_name }}-universal-apple-darwin.tar.gz"
+
+          # Generate checksum and append to release
+          shasum -a 256 "$ASSET" > "${ASSET}.sha256"
+
+          # Upload to the existing release
+          gh release upload "${{ github.ref_name }}" "$ASSET" "${ASSET}.sha256" --clobber
+
+  # ---------------------------------------------------------------------------
+  # Update Homebrew tap
+  # ---------------------------------------------------------------------------
+  homebrew:
+    name: Update Homebrew formula
+    needs: [release, universal-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update Homebrew tap
+        uses: mislav/bump-homebrew-formula-action@v3
+        with:
+          formula-name: chesstui
+          homebrew-tap: cjmiller/homebrew-tap
+          # Use the universal binary for Homebrew so it works on both Intel and Apple Silicon
+          download-url: https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/chesstui-${{ github.ref_name }}-universal-apple-darwin.tar.gz
+        env:
+          COMMITTER_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+
+  # ---------------------------------------------------------------------------
+  # Publish to crates.io
+  # ---------------------------------------------------------------------------
+  crates-io:
+    name: Publish to crates.io
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo publish --locked
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+  # ---------------------------------------------------------------------------
+  # Auto-deploy server binary to production
+  # ---------------------------------------------------------------------------
+  deploy-server:
+    name: Deploy server
+    needs: release
+    runs-on: ubuntu-latest
+    # Only deploy from full releases (no pre-releases)
+    if: "!contains(github.ref_name, '-')"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Linux x86_64 binary
+        uses: actions/download-artifact@v4
+        with:
+          name: x86_64-unknown-linux-musl
+          path: artifacts
+
+      - name: Extract binary
+        run: |
+          tar xzf artifacts/*.tar.gz
+          chmod +x chesstui-*/chesstui
+
+      - name: Deploy to server
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          SSH_OPTS="-o StrictHostKeyChecking=no -i ~/.ssh/deploy_key"
+
+          # Upload binary
+          scp $SSH_OPTS chesstui-*/chesstui "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/chesstui-new"
+
+          # Atomic swap + restart
+          ssh $SSH_OPTS "${DEPLOY_USER}@${DEPLOY_HOST}" << 'REMOTE'
+            sudo mv /tmp/chesstui-new /usr/local/bin/chesstui
+            sudo chmod +x /usr/local/bin/chesstui
+            sudo systemctl restart chesstui-server
+            sleep 2
+            sudo systemctl is-active chesstui-server
+          REMOTE

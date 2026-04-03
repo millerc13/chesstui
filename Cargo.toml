@@ -1,0 +1,21 @@
+[package]
+name = "chesstui"
+version = "0.1.0"
+edition = "2021"
+description = "Multiplayer chess in the terminal with built-in AI"
+license = "MIT"
+repository = "https://github.com/millerc13/chesstui"
+
+[dependencies]
+cozy-chess = "0.3"
+ratatui = "0.29"
+crossterm = "0.28"
+clap = { version = "4", features = ["derive"] }
+rand = "0.8"
+tokio = { version = "1", features = ["full"] }
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true

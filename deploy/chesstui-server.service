@@ -1,0 +1,42 @@
+[Unit]
+Description=ChessTUI Multiplayer Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=chesstui
+Group=chesstui
+ExecStart=/usr/local/bin/chesstui server --bind 0.0.0.0:7600
+Restart=on-failure
+RestartSec=5
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ReadWritePaths=/var/lib/chesstui
+StateDirectory=chesstui
+WorkingDirectory=/var/lib/chesstui
+
+# Resource limits
+LimitNOFILE=65536
+MemoryMax=512M
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=chesstui-server
+
+# Environment
+Environment=RUST_LOG=chesstui=info
+
+[Install]
+WantedBy=multi-user.target
