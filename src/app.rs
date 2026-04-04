@@ -160,6 +160,7 @@ pub struct App {
     // Multiplayer
     pub network: Option<crate::network::NetworkClient>,
     pub multiplayer_state: MultiplayerState,
+    pub multiplayer_selection: usize,
     pub login_input: String,
     pub otp_input: String,
     pub display_name_input: String,
@@ -197,6 +198,7 @@ impl App {
             replay_viewer: None,
             network: None,
             multiplayer_state: MultiplayerState::LoggedOut,
+            multiplayer_selection: 0,
             login_input: String::new(),
             otp_input: String::new(),
             display_name_input: String::new(),

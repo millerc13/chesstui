@@ -1,6 +1,6 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-use crate::app::{App, InputMode, MenuTab, Screen};
+use crate::app::{App, InputMode, MenuTab, MultiplayerState, Screen};
 use crate::game::move_input::{InputResult, MoveInputParser};
 
 pub fn handle_key(app: &mut App, key: KeyEvent) {
@@ -76,6 +76,7 @@ fn handle_menu(app: &mut App, key: KeyEvent) {
     match app.active_tab {
         MenuTab::Play => handle_play_tab(app, key),
         MenuTab::Replays => handle_replays_tab(app, key),
+        MenuTab::Multiplayer => handle_multiplayer_tab(app, key),
         _ => {} // placeholder tabs have no interaction
     }
 }
@@ -120,6 +121,124 @@ fn handle_replays_tab(app: &mut App, key: KeyEvent) {
             app.delete_selected_replay();
         }
         _ => {}
+    }
+}
+
+fn handle_multiplayer_tab(app: &mut App, key: KeyEvent) {
+    match &app.multiplayer_state.clone() {
+        MultiplayerState::LoggedOut => match key.code {
+            KeyCode::Enter => {
+                let url = app.server_url.clone();
+                app.network = Some(crate::network::NetworkClient::connect(&url));
+                app.multiplayer_state = MultiplayerState::EnteringEmail;
+            }
+            _ => {}
+        },
+        MultiplayerState::EnteringEmail => match key.code {
+            KeyCode::Char(c) => app.login_input.push(c),
+            KeyCode::Backspace => {
+                app.login_input.pop();
+            }
+            KeyCode::Enter => {
+                if !app.login_input.is_empty() {
+                    if let Some(ref net) = app.network {
+                        net.send(crate::protocol::ClientMessage::Authenticate {
+                            email: app.login_input.clone(),
+                        });
+                    }
+                    app.multiplayer_state = MultiplayerState::WaitingForOtp;
+                }
+            }
+            KeyCode::Esc => {
+                app.login_input.clear();
+                app.multiplayer_state = MultiplayerState::LoggedOut;
+            }
+            _ => {}
+        },
+        MultiplayerState::EnteringOtp => match key.code {
+            KeyCode::Char(c) if c.is_ascii_digit() => {
+                if app.otp_input.len() < 6 {
+                    app.otp_input.push(c);
+                }
+            }
+            KeyCode::Backspace => {
+                app.otp_input.pop();
+            }
+            KeyCode::Enter => {
+                if app.otp_input.len() == 6 {
+                    if let Some(ref net) = app.network {
+                        net.send(crate::protocol::ClientMessage::VerifyOtp {
+                            email: app.login_input.clone(),
+                            code: app.otp_input.clone(),
+                        });
+                    }
+                }
+            }
+            KeyCode::Esc => {
+                app.otp_input.clear();
+                app.multiplayer_state = MultiplayerState::EnteringEmail;
+            }
+            _ => {}
+        },
+        MultiplayerState::EnteringDisplayName => match key.code {
+            KeyCode::Char(c) => app.display_name_input.push(c),
+            KeyCode::Backspace => {
+                app.display_name_input.pop();
+            }
+            KeyCode::Enter => {
+                if !app.display_name_input.is_empty() {
+                    if let Some(ref net) = app.network {
+                        net.send(crate::protocol::ClientMessage::SetDisplayName {
+                            name: app.display_name_input.clone(),
+                        });
+                    }
+                    // Optimistically transition to LoggedIn
+                    let name = app.display_name_input.clone();
+                    app.multiplayer_state = MultiplayerState::LoggedIn {
+                        display_name: name,
+                        elo: 1200,
+                    };
+                }
+            }
+            _ => {}
+        },
+        MultiplayerState::LoggedIn { .. } => match key.code {
+            KeyCode::Char('j') | KeyCode::Down => {
+                if app.multiplayer_selection < 1 {
+                    app.multiplayer_selection += 1;
+                }
+            }
+            KeyCode::Char('k') | KeyCode::Up => {
+                app.multiplayer_selection = app.multiplayer_selection.saturating_sub(1);
+            }
+            KeyCode::Enter => match app.multiplayer_selection {
+                0 => {
+                    // Find Game
+                    if let Some(ref net) = app.network {
+                        net.send(crate::protocol::ClientMessage::FindGame);
+                    }
+                    app.multiplayer_state = MultiplayerState::Searching;
+                }
+                1 => {
+                    // Log Out
+                    app.network = None;
+                    app.multiplayer_state = MultiplayerState::LoggedOut;
+                    crate::network::session::clear_session();
+                }
+                _ => {}
+            },
+            _ => {}
+        },
+        MultiplayerState::Searching => match key.code {
+            KeyCode::Esc => {
+                if let Some(ref net) = app.network {
+                    net.send(crate::protocol::ClientMessage::CancelSearch);
+                }
+                app.multiplayer_state = MultiplayerState::LoggedOut;
+            }
+            _ => {}
+        },
+        _ => {} // WaitingForOtp, Connecting, InGame — no input handling needed
     }
 }
 
