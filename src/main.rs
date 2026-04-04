@@ -34,11 +34,10 @@ fn main() -> io::Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Some(Command::Server { bind, database_url, resend_api_key: _ }) => {
-            // Server mode — will be implemented in Task 4
-            eprintln!("Server mode not yet implemented");
-            eprintln!("Would bind to {} with database {}", bind, database_url);
-            Ok(())
+        Some(Command::Server { bind, database_url, resend_api_key }) => {
+            let rt = tokio::runtime::Runtime::new()?;
+            rt.block_on(chesstui::server::run(bind, database_url, resend_api_key))
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))
         }
         None => run_tui(),
     }
