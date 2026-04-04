@@ -5,14 +5,18 @@ edition = "2021"
 description = "Multiplayer chess in the terminal with built-in AI"
 license = "MIT"
 repository = "https://github.com/millerc13/chesstui"
+default-run = "chesstui"
 
 [dependencies]
 cozy-chess = "0.3"
 ratatui = "0.29"
 crossterm = "0.28"
-clap = { version = "4", features = ["derive"] }
+clap = { version = "4", features = ["derive", "env"] }
 rand = "0.8"
 tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = { version = "0.4", features = ["serde"] }
 
 [profile.release]
 opt-level = 3
