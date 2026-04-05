@@ -402,7 +402,6 @@ fn check_suffix(board: &Board, mv: &Move) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cozy_chess::Board;
 
     #[test]
     fn file_rank_chars() {

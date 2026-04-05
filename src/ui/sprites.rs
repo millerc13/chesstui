@@ -4,69 +4,69 @@ use crate::config::PieceStyle;
 // ── Pixel Color (16x16, full color) ─────────────────────────────────────
 
 mod pixel_color {
-    pub const WHITE_KING:   &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/color/white_king.png");
-    pub const BLACK_KING:   &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/color/black_king.png");
-    pub const WHITE_QUEEN:  &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/color/white_queen.png");
-    pub const BLACK_QUEEN:  &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/color/black_queen.png");
-    pub const WHITE_ROOK:   &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/color/white_rook.png");
-    pub const BLACK_ROOK:   &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/color/black_rook.png");
-    pub const WHITE_BISHOP: &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/color/white_bishop.png");
-    pub const BLACK_BISHOP: &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/color/black_bishop.png");
-    pub const WHITE_KNIGHT: &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/color/white_knight.png");
-    pub const BLACK_KNIGHT: &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/color/black_knight.png");
-    pub const WHITE_PAWN:   &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/color/white_pawn.png");
-    pub const BLACK_PAWN:   &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/color/black_pawn.png");
+    pub const WHITE_KING:   &[u8] = include_bytes!("../../assets/pieces/color/white_king.png");
+    pub const BLACK_KING:   &[u8] = include_bytes!("../../assets/pieces/color/black_king.png");
+    pub const WHITE_QUEEN:  &[u8] = include_bytes!("../../assets/pieces/color/white_queen.png");
+    pub const BLACK_QUEEN:  &[u8] = include_bytes!("../../assets/pieces/color/black_queen.png");
+    pub const WHITE_ROOK:   &[u8] = include_bytes!("../../assets/pieces/color/white_rook.png");
+    pub const BLACK_ROOK:   &[u8] = include_bytes!("../../assets/pieces/color/black_rook.png");
+    pub const WHITE_BISHOP: &[u8] = include_bytes!("../../assets/pieces/color/white_bishop.png");
+    pub const BLACK_BISHOP: &[u8] = include_bytes!("../../assets/pieces/color/black_bishop.png");
+    pub const WHITE_KNIGHT: &[u8] = include_bytes!("../../assets/pieces/color/white_knight.png");
+    pub const BLACK_KNIGHT: &[u8] = include_bytes!("../../assets/pieces/color/black_knight.png");
+    pub const WHITE_PAWN:   &[u8] = include_bytes!("../../assets/pieces/color/white_pawn.png");
+    pub const BLACK_PAWN:   &[u8] = include_bytes!("../../assets/pieces/color/black_pawn.png");
 }
 
 // ── Pixel Duo (16x16, two-tone) ─────────────────────────────────────────
 
 mod pixel_duo {
-    pub const WHITE_KING:   &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/duo/white_king.png");
-    pub const BLACK_KING:   &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/duo/black_king.png");
-    pub const WHITE_QUEEN:  &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/duo/white_queen.png");
-    pub const BLACK_QUEEN:  &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/duo/black_queen.png");
-    pub const WHITE_ROOK:   &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/duo/white_rook.png");
-    pub const BLACK_ROOK:   &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/duo/black_rook.png");
-    pub const WHITE_BISHOP: &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/duo/white_bishop.png");
-    pub const BLACK_BISHOP: &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/duo/black_bishop.png");
-    pub const WHITE_KNIGHT: &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/duo/white_knight.png");
-    pub const BLACK_KNIGHT: &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/duo/black_knight.png");
-    pub const WHITE_PAWN:   &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/duo/white_pawn.png");
-    pub const BLACK_PAWN:   &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/duo/black_pawn.png");
+    pub const WHITE_KING:   &[u8] = include_bytes!("../../assets/pieces/duo/white_king.png");
+    pub const BLACK_KING:   &[u8] = include_bytes!("../../assets/pieces/duo/black_king.png");
+    pub const WHITE_QUEEN:  &[u8] = include_bytes!("../../assets/pieces/duo/white_queen.png");
+    pub const BLACK_QUEEN:  &[u8] = include_bytes!("../../assets/pieces/duo/black_queen.png");
+    pub const WHITE_ROOK:   &[u8] = include_bytes!("../../assets/pieces/duo/white_rook.png");
+    pub const BLACK_ROOK:   &[u8] = include_bytes!("../../assets/pieces/duo/black_rook.png");
+    pub const WHITE_BISHOP: &[u8] = include_bytes!("../../assets/pieces/duo/white_bishop.png");
+    pub const BLACK_BISHOP: &[u8] = include_bytes!("../../assets/pieces/duo/black_bishop.png");
+    pub const WHITE_KNIGHT: &[u8] = include_bytes!("../../assets/pieces/duo/white_knight.png");
+    pub const BLACK_KNIGHT: &[u8] = include_bytes!("../../assets/pieces/duo/black_knight.png");
+    pub const WHITE_PAWN:   &[u8] = include_bytes!("../../assets/pieces/duo/white_pawn.png");
+    pub const BLACK_PAWN:   &[u8] = include_bytes!("../../assets/pieces/duo/black_pawn.png");
 }
 
 // ── Pixel Mono (16x16, monochrome) ──────────────────────────────────────
 
 mod pixel_mono {
-    pub const WHITE_KING:   &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/mono/white_king.png");
-    pub const BLACK_KING:   &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/mono/black_king.png");
-    pub const WHITE_QUEEN:  &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/mono/white_queen.png");
-    pub const BLACK_QUEEN:  &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/mono/black_queen.png");
-    pub const WHITE_ROOK:   &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/mono/white_rook.png");
-    pub const BLACK_ROOK:   &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/mono/black_rook.png");
-    pub const WHITE_BISHOP: &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/mono/white_bishop.png");
-    pub const BLACK_BISHOP: &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/mono/black_bishop.png");
-    pub const WHITE_KNIGHT: &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/mono/white_knight.png");
-    pub const BLACK_KNIGHT: &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/mono/black_knight.png");
-    pub const WHITE_PAWN:   &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/mono/white_pawn.png");
-    pub const BLACK_PAWN:   &[u8] = include_bytes!("../../chess_sprites/_extracted/chess-pieces-png/mono/black_pawn.png");
+    pub const WHITE_KING:   &[u8] = include_bytes!("../../assets/pieces/mono/white_king.png");
+    pub const BLACK_KING:   &[u8] = include_bytes!("../../assets/pieces/mono/black_king.png");
+    pub const WHITE_QUEEN:  &[u8] = include_bytes!("../../assets/pieces/mono/white_queen.png");
+    pub const BLACK_QUEEN:  &[u8] = include_bytes!("../../assets/pieces/mono/black_queen.png");
+    pub const WHITE_ROOK:   &[u8] = include_bytes!("../../assets/pieces/mono/white_rook.png");
+    pub const BLACK_ROOK:   &[u8] = include_bytes!("../../assets/pieces/mono/black_rook.png");
+    pub const WHITE_BISHOP: &[u8] = include_bytes!("../../assets/pieces/mono/white_bishop.png");
+    pub const BLACK_BISHOP: &[u8] = include_bytes!("../../assets/pieces/mono/black_bishop.png");
+    pub const WHITE_KNIGHT: &[u8] = include_bytes!("../../assets/pieces/mono/white_knight.png");
+    pub const BLACK_KNIGHT: &[u8] = include_bytes!("../../assets/pieces/mono/black_knight.png");
+    pub const WHITE_PAWN:   &[u8] = include_bytes!("../../assets/pieces/mono/white_pawn.png");
+    pub const BLACK_PAWN:   &[u8] = include_bytes!("../../assets/pieces/mono/black_pawn.png");
 }
 
 // ── Classic (512x512, high-res) ─────────────────────────────────────────
 
 mod classic {
-    pub const WHITE_KING:   &[u8] = include_bytes!("../../chess_sprites/_extracted/board-game-pieces/chess_king_white.png");
-    pub const BLACK_KING:   &[u8] = include_bytes!("../../chess_sprites/_extracted/board-game-pieces/chess_king_black.png");
-    pub const WHITE_QUEEN:  &[u8] = include_bytes!("../../chess_sprites/_extracted/board-game-pieces/chess_queen_white.png");
-    pub const BLACK_QUEEN:  &[u8] = include_bytes!("../../chess_sprites/_extracted/board-game-pieces/chess_queen_black.png");
-    pub const WHITE_ROOK:   &[u8] = include_bytes!("../../chess_sprites/_extracted/board-game-pieces/chess_rook_white.png");
-    pub const BLACK_ROOK:   &[u8] = include_bytes!("../../chess_sprites/_extracted/board-game-pieces/chess_rook_black.png");
-    pub const WHITE_BISHOP: &[u8] = include_bytes!("../../chess_sprites/_extracted/board-game-pieces/chess_bishop_white.png");
-    pub const BLACK_BISHOP: &[u8] = include_bytes!("../../chess_sprites/_extracted/board-game-pieces/chess_bishop_black.png");
-    pub const WHITE_KNIGHT: &[u8] = include_bytes!("../../chess_sprites/_extracted/board-game-pieces/chess_knight_white.png");
-    pub const BLACK_KNIGHT: &[u8] = include_bytes!("../../chess_sprites/_extracted/board-game-pieces/chess_knight_black.png");
-    pub const WHITE_PAWN:   &[u8] = include_bytes!("../../chess_sprites/_extracted/board-game-pieces/chess_pawn_white.png");
-    pub const BLACK_PAWN:   &[u8] = include_bytes!("../../chess_sprites/_extracted/board-game-pieces/chess_pawn_black.png");
+    pub const WHITE_KING:   &[u8] = include_bytes!("../../assets/pieces/classic/chess_king_white.png");
+    pub const BLACK_KING:   &[u8] = include_bytes!("../../assets/pieces/classic/chess_king_black.png");
+    pub const WHITE_QUEEN:  &[u8] = include_bytes!("../../assets/pieces/classic/chess_queen_white.png");
+    pub const BLACK_QUEEN:  &[u8] = include_bytes!("../../assets/pieces/classic/chess_queen_black.png");
+    pub const WHITE_ROOK:   &[u8] = include_bytes!("../../assets/pieces/classic/chess_rook_white.png");
+    pub const BLACK_ROOK:   &[u8] = include_bytes!("../../assets/pieces/classic/chess_rook_black.png");
+    pub const WHITE_BISHOP: &[u8] = include_bytes!("../../assets/pieces/classic/chess_bishop_white.png");
+    pub const BLACK_BISHOP: &[u8] = include_bytes!("../../assets/pieces/classic/chess_bishop_black.png");
+    pub const WHITE_KNIGHT: &[u8] = include_bytes!("../../assets/pieces/classic/chess_knight_white.png");
+    pub const BLACK_KNIGHT: &[u8] = include_bytes!("../../assets/pieces/classic/chess_knight_black.png");
+    pub const WHITE_PAWN:   &[u8] = include_bytes!("../../assets/pieces/classic/chess_pawn_white.png");
+    pub const BLACK_PAWN:   &[u8] = include_bytes!("../../assets/pieces/classic/chess_pawn_black.png");
 }
 
 /// Returns raw PNG bytes for a given style/piece/color combo.
