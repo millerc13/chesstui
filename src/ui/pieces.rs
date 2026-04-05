@@ -216,13 +216,13 @@ fn arc_lengths(profile: &[(f64, f64)]) -> Vec<f64> {
 fn interpolate_profile(profile: &[(f64, f64)], lengths: &[f64], t: f64) -> (f64, f64, usize) {
     let total = *lengths.last().unwrap();
     let target = (t * total).min(total - 1e-9);
-    let mut seg = 0;
-    for i in 1..lengths.len() {
-        if lengths[i] >= target {
-            seg = i - 1;
-            break;
-        }
-    }
+    let seg = lengths
+        .iter()
+        .enumerate()
+        .skip(1)
+        .find(|(_, &l)| l >= target)
+        .map(|(i, _)| i - 1)
+        .unwrap_or(0);
     let next = (seg + 1).min(profile.len() - 1);
     let seg_start = lengths[seg];
     let seg_end = lengths[next];
@@ -449,6 +449,7 @@ pub fn color_to_rgb(c: Color) -> (u8, u8, u8) {
 
 /// Draw a 3D-shaded piece into a board square using half-block characters.
 /// Uses surface-of-revolution profiles with Phong lighting and edge outlines.
+#[allow(clippy::too_many_arguments)]
 pub fn draw_piece(
     buf: &mut Buffer,
     area: Rect,

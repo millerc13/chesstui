@@ -73,7 +73,7 @@ pub fn draw_friends_sidebar(frame: &mut Frame, area: Rect, app: &App) {
             let (dot, dot_color) = if friend.online && friend.activity != "Offline" {
                 ("●", ratatui::style::Color::Green)
             } else {
-                ("◌", app.theme.text_dim.into())
+                ("◌", app.theme.text_dim)
             };
 
             buf.set_string(inner.x + 1, y, dot, Style::default().fg(dot_color));

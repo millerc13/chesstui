@@ -46,7 +46,7 @@ fn main() -> io::Result<()> {
         }) => {
             let rt = tokio::runtime::Runtime::new()?;
             rt.block_on(chesstui::server::run(bind, database_url, resend_api_key))
-                .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))
+                .map_err(|e| io::Error::other(e.to_string()))
         }
         None => run_tui(),
     }

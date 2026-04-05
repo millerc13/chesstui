@@ -11,6 +11,7 @@ use crate::theme::Theme;
 
 /// Generate a full board image at the given pixel dimensions.
 /// Each square is sq_px × sq_px pixels. Total image is 8*sq_px × 8*sq_px.
+#[allow(clippy::too_many_arguments)]
 pub fn render_board_image(
     board: &cozy_chess::Board,
     theme: &Theme,
@@ -503,13 +504,13 @@ fn arc_lengths(profile: &[(f64, f64)]) -> Vec<f64> {
 fn interpolate_profile(profile: &[(f64, f64)], lengths: &[f64], t: f64) -> (f64, f64, usize) {
     let total = *lengths.last().unwrap();
     let target = (t * total).min(total - 1e-9);
-    let mut seg = 0;
-    for i in 1..lengths.len() {
-        if lengths[i] >= target {
-            seg = i - 1;
-            break;
-        }
-    }
+    let seg = lengths
+        .iter()
+        .enumerate()
+        .skip(1)
+        .find(|(_, &l)| l >= target)
+        .map(|(i, _)| i - 1)
+        .unwrap_or(0);
     let next = (seg + 1).min(profile.len() - 1);
     let seg_start = lengths[seg];
     let seg_end = lengths[next];
@@ -545,6 +546,7 @@ fn get_piece(board: &cozy_chess::Board, sq: Square) -> Option<(Piece, ChessColor
     None
 }
 
+#[allow(clippy::too_many_arguments)]
 fn highlight_color(
     file: u8,
     rank: u8,
@@ -585,7 +587,7 @@ fn highlight_color(
     }
     if let Some((from, to)) = last_move {
         if sq == from || sq == to {
-            let is_light = (file + rank) % 2 != 0;
+            let is_light = !(file + rank).is_multiple_of(2);
             return Some(color_to_rgb_tuple(if is_light {
                 theme.last_move_light
             } else {

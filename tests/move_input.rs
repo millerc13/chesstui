@@ -42,10 +42,8 @@ fn invalid_input_returns_no_match() {
     parser.feed('z');
     // At this point, 'z' alone might be NeedMore (unlikely but check)
     // Feed more to get NoMatch
-    match parser.feed('9') {
-        InputResult::NoMatch => {} // expected
-        _ => {}                    // 'z' alone might already be NoMatch
-    }
+    // z9 should result in NoMatch (or be silently ignored)
+    let _ = parser.feed('9');
 }
 
 #[test]

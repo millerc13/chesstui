@@ -271,7 +271,7 @@ impl Theme {
     }
 
     pub fn square_bg(&self, file: u8, rank: u8) -> Color {
-        if (file + rank) % 2 == 0 {
+        if (file + rank).is_multiple_of(2) {
             self.dark_square
         } else {
             self.light_square

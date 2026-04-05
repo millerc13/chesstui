@@ -521,15 +521,14 @@ fn handle_multiplayer_tab(app: &mut App, key: KeyEvent) {
             },
             _ => {}
         },
-        MultiplayerState::Searching => match key.code {
-            KeyCode::Esc => {
+        MultiplayerState::Searching => {
+            if key.code == KeyCode::Esc {
                 if let Some(ref net) = app.network {
                     net.send(crate::protocol::ClientMessage::CancelSearch);
                 }
                 app.multiplayer_state = MultiplayerState::LoggedOut;
             }
-            _ => {}
-        },
+        }
         _ => {} // WaitingForOtp, Connecting, InGame — no input handling needed
     }
 }

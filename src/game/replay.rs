@@ -118,7 +118,7 @@ pub fn load_replays() -> Vec<SavedGame> {
         .into_iter()
         .flatten()
         .filter_map(|entry| entry.ok())
-        .filter(|entry| entry.path().extension().map_or(false, |ext| ext == "json"))
+        .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "json"))
         .filter_map(|entry| {
             let contents = fs::read_to_string(entry.path()).ok()?;
             serde_json::from_str::<SavedGame>(&contents).ok()

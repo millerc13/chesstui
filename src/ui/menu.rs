@@ -438,8 +438,8 @@ fn draw_settings_tab(frame: &mut Frame, app: &mut App, area: Rect) {
             // Compute char cell dimensions the image will occupy
             let img_px_w = sq_px * 6;
             let img_px_h = sq_px * 2;
-            let img_char_w = ((img_px_w + cell_size.0 as u32 - 1) / cell_size.0 as u32) as u16;
-            let img_char_h = ((img_px_h + cell_size.1 as u32 - 1) / cell_size.1 as u32) as u16;
+            let img_char_w = img_px_w.div_ceil(cell_size.0 as u32) as u16;
+            let img_char_h = img_px_h.div_ceil(cell_size.1 as u32) as u16;
 
             // Center image within preview_inner
             let ix = preview_inner.x + preview_inner.width.saturating_sub(img_char_w) / 2;

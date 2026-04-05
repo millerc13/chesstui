@@ -91,5 +91,5 @@ fn make_uci(game: &mut GameState, uci: &str) {
     };
     let mv = find_move(game, &from, &to, promo);
     game.try_make_move(mv)
-        .expect(&format!("Move {} should be legal", uci));
+        .unwrap_or_else(|_| panic!("Move {} should be legal", uci));
 }

@@ -48,7 +48,7 @@ pub fn to_algebraic(board: &Board, mv: &Move) -> String {
     }
 
     // 7. Check / checkmate suffix
-    s.push_str(&check_suffix(board, mv));
+    s.push_str(check_suffix(board, mv));
 
     s
 }
@@ -210,19 +210,16 @@ pub fn parse_san(board: &Board, san: &str) -> Option<Move> {
 // ──────────────────────────────────────────────────────────────────────────────
 
 fn piece_on(board: &Board, sq: Square) -> Option<Piece> {
-    for piece in [
+    [
         Piece::Pawn,
         Piece::Knight,
         Piece::Bishop,
         Piece::Rook,
         Piece::Queen,
         Piece::King,
-    ] {
-        if board.pieces(piece).has(sq) {
-            return Some(piece);
-        }
-    }
-    None
+    ]
+    .into_iter()
+    .find(|&piece| board.pieces(piece).has(sq))
 }
 
 fn piece_char(piece: Piece) -> char {

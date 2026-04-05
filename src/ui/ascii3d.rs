@@ -249,13 +249,13 @@ fn interpolate_profile(profile: &[(f64, f64)], lengths: &[f64], t: f64) -> (f64,
     let total = *lengths.last().unwrap();
     let target = (t * total).min(total - 1e-9);
 
-    let mut seg = 0;
-    for i in 1..lengths.len() {
-        if lengths[i] >= target {
-            seg = i - 1;
-            break;
-        }
-    }
+    let seg = lengths
+        .iter()
+        .enumerate()
+        .skip(1)
+        .find(|(_, &l)| l >= target)
+        .map(|(i, _)| i - 1)
+        .unwrap_or(0);
 
     let seg_start = lengths[seg];
     let next = (seg + 1).min(profile.len() - 1);
@@ -494,8 +494,8 @@ pub fn render_to_lines(
         let bot_row = row * 2 + 1;
 
         let mut spans: Vec<Span> = Vec::with_capacity(w);
-        for col in 0..w {
-            let top = hires[top_row][col];
+        for (col, top_val) in hires[top_row].iter().enumerate() {
+            let top = *top_val;
             let bot = if bot_row < hires_h {
                 hires[bot_row][col]
             } else {

@@ -176,19 +176,16 @@ impl GameState {
     }
 
     fn piece_on(&self, square: Square) -> Option<Piece> {
-        for piece in [
+        [
             Piece::Pawn,
             Piece::Knight,
             Piece::Bishop,
             Piece::Rook,
             Piece::Queen,
             Piece::King,
-        ] {
-            if self.board.pieces(piece).has(square) {
-                return Some(piece);
-            }
-        }
-        None
+        ]
+        .into_iter()
+        .find(|&piece| self.board.pieces(piece).has(square))
     }
 
     fn update_status(&mut self) {

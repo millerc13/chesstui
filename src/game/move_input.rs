@@ -108,7 +108,7 @@ impl MoveInputParser {
             0 => InputResult::NoMatch,
             1 => {
                 let (mv, san) = &self.legal_moves[self.matching[0]];
-                let stripped = san.trim_end_matches(|c| c == '+' || c == '#');
+                let stripped = san.trim_end_matches(['+', '#']);
                 // Only auto-execute when the buffer equals the complete (stripped) SAN.
                 if self.buffer == stripped {
                     InputResult::Exact(*mv)
@@ -167,7 +167,9 @@ impl MoveInputParser {
             if has_moves {
                 return Some(InputResult::NeedMore(1));
             } else {
-                return Some(InputResult::NoMatch);
+                // Don't return NoMatch — fall through to SAN matching
+                // (e.g. "e4" is a valid SAN even though E4 has no piece on it)
+                return None;
             }
         }
 
@@ -244,7 +246,7 @@ impl MoveInputParser {
 ///      then retry. This lets "ed5" match "exd5".
 fn san_matches(san: &str, input: &str) -> bool {
     // Strip trailing '+' / '#' for comparison.
-    let stripped = san.trim_end_matches(|c| c == '+' || c == '#');
+    let stripped = san.trim_end_matches(['+', '#']);
 
     // 1. Direct prefix match.
     if stripped.starts_with(input) {

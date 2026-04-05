@@ -612,7 +612,7 @@ async fn handle_connection(socket: WebSocket, state: Arc<AppState>) {
 
                     if let Some(color) = room.color_of(&user_id) {
                         // Can only accept if the opponent offered
-                        let opponent_offered = room.draw_offered_by.map_or(false, |c| c != color);
+                        let opponent_offered = room.draw_offered_by.is_some_and(|c| c != color);
                         if opponent_offered {
                             room.set_draw_by_agreement();
 

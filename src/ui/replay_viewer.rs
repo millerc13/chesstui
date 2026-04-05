@@ -130,7 +130,7 @@ fn draw_move_list(frame: &mut Frame, app: &App, area: Rect) {
     let mut lines = Vec::new();
     let moves = &viewer.game.moves;
 
-    let total_pairs = (moves.len() + 1) / 2;
+    let total_pairs = moves.len().div_ceil(2);
     // Scroll so current move is visible
     let current_pair = if viewer.current_move > 0 {
         (viewer.current_move - 1) / 2

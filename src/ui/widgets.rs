@@ -73,12 +73,12 @@ impl Widget for CardButton<'_> {
         for row in 1..=2u16 {
             let y = area.y + row;
             // Left border
-            buf.set_string(area.x, y, &vt.to_string(), border_style);
+            buf.set_string(area.x, y, vt.to_string(), border_style);
             // Clear inner area
             let blank = " ".repeat(inner_w);
             buf.set_string(area.x + 1, y, &blank, Style::default());
             // Right border
-            buf.set_string(area.x + area.width - 1, y, &vt.to_string(), border_style);
+            buf.set_string(area.x + area.width - 1, y, vt.to_string(), border_style);
         }
 
         // Row 1: icon + title (+ optional tag right-aligned)
@@ -181,13 +181,13 @@ pub fn render_rounded_modal(
     buf.set_string(area.x, area.y, "╭", border_style);
     // Dashes before title
     let x = area.x + 1;
-    buf.set_string(x, area.y, &"─".repeat(top_left_dashes), border_style);
+    buf.set_string(x, area.y, "─".repeat(top_left_dashes), border_style);
     // Title text
     let x = x + top_left_dashes as u16;
     buf.set_string(x, area.y, &title_segment, title_style);
     // Dashes after title
     let x = x + title_seg_len as u16;
-    buf.set_string(x, area.y, &"─".repeat(top_right_dashes), border_style);
+    buf.set_string(x, area.y, "─".repeat(top_right_dashes), border_style);
     // Top-right corner
     buf.set_string(area.x + area.width - 1, area.y, "╮", border_style);
 
@@ -212,11 +212,11 @@ pub fn render_rounded_modal(
 
     buf.set_string(area.x, bot_y, "╰", border_style);
     let x = area.x + 1;
-    buf.set_string(x, bot_y, &"─".repeat(bot_left_dashes), border_style);
+    buf.set_string(x, bot_y, "─".repeat(bot_left_dashes), border_style);
     let x = x + bot_left_dashes as u16;
     buf.set_string(x, bot_y, &footer_segment, footer_style);
     let x = x + footer_seg_len as u16;
-    buf.set_string(x, bot_y, &"─".repeat(bot_right_dashes), border_style);
+    buf.set_string(x, bot_y, "─".repeat(bot_right_dashes), border_style);
     buf.set_string(area.x + area.width - 1, bot_y, "╯", border_style);
 
     // Return inner rect (inset by 1 on each side, plus 1 line top/bottom for border)
@@ -345,7 +345,7 @@ impl Widget for PlayerBar<'_> {
         // Captured pieces
         for &(piece, color) in self.captured {
             let sym = chess_piece_symbol(piece, color);
-            buf.set_string(x, y, &sym.to_string(), capture_style);
+            buf.set_string(x, y, sym.to_string(), capture_style);
             x += 1;
         }
 
@@ -436,7 +436,7 @@ impl Widget for TabBar<'_> {
         if y_underline < area.y + area.height {
             let remaining = (area.x + area.width).saturating_sub(x) as usize;
             if remaining > 0 {
-                buf.set_string(x, y_underline, &"─".repeat(remaining), underline_dim);
+                buf.set_string(x, y_underline, "─".repeat(remaining), underline_dim);
             }
         }
     }

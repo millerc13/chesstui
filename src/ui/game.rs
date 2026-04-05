@@ -351,8 +351,8 @@ fn draw_board_image(frame: &mut Frame, app: &mut App, area: Rect) {
 
     // Compute board area in terminal cells
     let board_px = sq_px * 8;
-    let board_char_w = (board_px + cell_size.0 as u32 - 1) / cell_size.0 as u32;
-    let board_char_h = (board_px + cell_size.1 as u32 - 1) / cell_size.1 as u32;
+    let board_char_w = board_px.div_ceil(cell_size.0 as u32);
+    let board_char_h = board_px.div_ceil(cell_size.1 as u32);
     let ox = area.x + label_cols + (board_cols.saturating_sub(board_char_w as u16)) / 2;
     let oy = area.y + (board_rows.saturating_sub(board_char_h as u16)) / 2;
     let board_area = Rect::new(ox, oy, board_char_w as u16, board_char_h as u16);
@@ -402,7 +402,7 @@ fn draw_board_image(frame: &mut Frame, app: &mut App, area: Rect) {
 
     for dr in 0..8u8 {
         let (_, rank) = if app.board_flipped {
-            (7 - 0, dr)
+            (7, dr)
         } else {
             (0, 7 - dr)
         };

@@ -4,19 +4,14 @@ use std::path::PathBuf;
 
 // ── Piece style ─────────────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum PieceStyle {
+    #[default]
     Generated3D,
     PixelColor,
     PixelDuo,
     PixelMono,
     Classic,
-}
-
-impl Default for PieceStyle {
-    fn default() -> Self {
-        Self::Generated3D
-    }
 }
 
 impl PieceStyle {

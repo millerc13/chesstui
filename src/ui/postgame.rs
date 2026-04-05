@@ -128,7 +128,7 @@ fn draw_result_banner(frame: &mut Frame, app: &App, area: Rect) {
     let pad1 = inner_w.saturating_sub(line1_content.chars().count());
     let left_pad1 = pad1 / 2;
     if banner_area.y + 1 < banner_area.y + banner_area.height {
-        buf.set_string(banner_area.x, banner_area.y + 1, &"\u{2551}", border_style);
+        buf.set_string(banner_area.x, banner_area.y + 1, "\u{2551}", border_style);
         let content_x = banner_area.x + 1 + left_pad1 as u16;
         buf.set_string(content_x, banner_area.y + 1, &line1_content, text_style);
         let right_border_x = banner_area.x + banner_area.width - 1;
@@ -244,7 +244,7 @@ fn draw_stats_panel(frame: &mut Frame, app: &App, area: Rect) {
 
     // Side borders and content rows
     let total_half_moves = app.game.move_history().len();
-    let full_moves = (total_half_moves + 1) / 2;
+    let full_moves = total_half_moves.div_ceil(2);
 
     let duration = match app.game_start_time {
         Some(start) => {
@@ -406,9 +406,9 @@ fn draw_action_buttons(frame: &mut Frame, app: &App, area: Rect) {
     ];
 
     let button_count = buttons.len() as u16;
-    let total_gap = (button_count - 1) * 1; // 1 char gap between buttons
+    let total_gap = button_count - 1; // 1 char gap between buttons
     let button_w = (area.width.saturating_sub(total_gap)) / button_count;
-    let button_w = button_w.min(15).max(8);
+    let button_w = button_w.clamp(8, 15);
 
     // Center the button row
     let total_w = button_w * button_count + total_gap;
@@ -474,7 +474,7 @@ fn draw_simple_button(
     let left_pad = pad / 2;
 
     let y = area.y + 1;
-    buf.set_string(area.x, y, &vt.to_string(), border_style);
+    buf.set_string(area.x, y, vt.to_string(), border_style);
     let fill = " ".repeat(inner_w);
     buf.set_string(area.x + 1, y, &fill, Style::default());
 
@@ -486,7 +486,7 @@ fn draw_simple_button(
         Style::default().fg(theme.text_primary)
     };
     buf.set_string(area.x + 1 + left_pad as u16, y, &content, text_style);
-    buf.set_string(area.x + area.width - 1, y, &vt.to_string(), border_style);
+    buf.set_string(area.x + area.width - 1, y, vt.to_string(), border_style);
 
     // Bottom border
     if area.height >= 3 {

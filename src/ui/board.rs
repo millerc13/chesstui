@@ -276,7 +276,7 @@ impl ChessBoardWidget<'_> {
 
         if let Some((from, to)) = self.last_move {
             if sq == from || sq == to {
-                let is_light = (file + rank) % 2 != 0;
+                let is_light = !(file + rank).is_multiple_of(2);
                 return Some(if is_light {
                     self.theme.last_move_light
                 } else {

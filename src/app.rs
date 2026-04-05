@@ -289,6 +289,12 @@ pub struct App {
     pub postgame_selection: usize, // 0=Rematch, 1=Review, 2=Copy PGN, 3=Menu
 }
 
+impl Default for App {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl App {
     pub fn new() -> Self {
         let config = crate::config::Config::load();
@@ -574,7 +580,7 @@ impl App {
                 self.input_buffer.clear();
                 self.board_image_dirty = true;
 
-                let total_full_moves = (self.game.move_history().len() + 1) / 2;
+                let total_full_moves = self.game.move_history().len().div_ceil(2);
                 if total_full_moves > 0 {
                     self.move_list_scroll = total_full_moves.saturating_sub(1);
                 }
@@ -757,7 +763,7 @@ impl App {
                 self.input_buffer.clear();
                 self.board_image_dirty = true;
 
-                let total_full_moves = (self.game.move_history().len() + 1) / 2;
+                let total_full_moves = self.game.move_history().len().div_ceil(2);
                 if total_full_moves > 0 {
                     self.move_list_scroll = total_full_moves.saturating_sub(1);
                 }
