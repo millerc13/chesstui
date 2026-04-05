@@ -59,4 +59,4 @@ jobs:
       - run: cargo build --release
       - run: ./target/release/chesstui --help
       - run: ./target/release/chesstui server --help
-      - run: ./target/release/chesstui client --help
+      - run: ./target/release/chesstui --help
