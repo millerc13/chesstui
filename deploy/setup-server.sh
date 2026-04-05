@@ -15,6 +15,25 @@ info "Creating state directory..."
 mkdir -p /var/lib/chesstui
 chown chesstui:chesstui /var/lib/chesstui
 
+info "Setting up PostgreSQL..."
+if command -v psql > /dev/null 2>&1; then
+  sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='chesstui'" | grep -q 1 || \
+    sudo -u postgres createuser chesstui
+  sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='chesstui'" | grep -q 1 || \
+    sudo -u postgres createdb -O chesstui chesstui
+  info "PostgreSQL database 'chesstui' ready"
+else
+  info "PostgreSQL not found — install it and create the 'chesstui' database manually"
+fi
+
+info "Creating config directory..."
+mkdir -p /etc/chesstui
+if [ ! -f /etc/chesstui/server.env ]; then
+  cp "$(dirname "$0")/server.env.example" /etc/chesstui/server.env
+  chmod 600 /etc/chesstui/server.env
+  info "Created /etc/chesstui/server.env — edit with your DATABASE_URL and RESEND_API_KEY"
+fi
+
 info "Installing systemd service..."
 cp "$(dirname "$0")/chesstui-server.service" /etc/systemd/system/chesstui-server.service
 systemctl daemon-reload

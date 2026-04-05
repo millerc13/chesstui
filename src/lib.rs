@@ -4,5 +4,8 @@ pub mod app;
 pub mod ui;
 pub mod input;
 pub mod ai;
+pub mod config;
+pub mod perf;
 pub mod protocol;
 pub mod server;
+pub mod network;

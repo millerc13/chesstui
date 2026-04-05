@@ -149,49 +149,75 @@ impl MoveInputParser {
         })
     }
 
-    /// Check if the buffer is a 4–5 character square-to-square string like "e2e4" or "e7e8q".
-    /// Returns Some(result) if handled, None if the buffer doesn't fit the pattern.
+    /// Check if the buffer looks like a square-to-square coordinate string.
+    /// Handles partial input (2-3 chars) as NeedMore, and complete input (4-5 chars)
+    /// as Exact/NoMatch.
     fn try_square_to_square(&self) -> Option<InputResult> {
         let buf = &self.buffer;
-        // Must be exactly 4 or 5 characters.
-        if buf.len() != 4 && buf.len() != 5 {
+
+        // Check if the first two chars form a valid source square
+        if buf.len() < 2 {
             return None;
         }
+        let from = buf[0..2].parse::<Square>().ok()?;
 
-        // First two chars: source square, next two: destination square.
-        let from_str = &buf[0..2];
-        let to_str = &buf[2..4];
+        // 2-3 chars: we have a source square, check if any legal move starts there
+        if buf.len() == 2 || buf.len() == 3 {
+            let has_moves = self.legal_moves.iter().any(|(mv, _)| mv.from == from);
+            if has_moves {
+                return Some(InputResult::NeedMore(1));
+            } else {
+                return Some(InputResult::NoMatch);
+            }
+        }
 
-        let from = from_str.parse::<Square>().ok()?;
-        let to = to_str.parse::<Square>().ok()?;
+        // 4-5 chars: full from+to coordinate
+        let to = buf[2..4].parse::<Square>().ok()?;
 
-        // Optional fifth character: promotion piece.
+        // Map standard castling coordinates to cozy-chess king→rook encoding
+        let effective_to = match (from, to) {
+            (Square::E1, Square::G1) => Square::H1, // White kingside
+            (Square::E1, Square::C1) => Square::A1, // White queenside
+            (Square::E8, Square::G8) => Square::H8, // Black kingside
+            (Square::E8, Square::C8) => Square::A8, // Black queenside
+            _ => to,
+        };
+
         let promo_piece: Option<Piece> = if buf.len() == 5 {
             match buf.chars().nth(4).map(|c| c.to_ascii_lowercase()) {
                 Some('q') => Some(Piece::Queen),
                 Some('r') => Some(Piece::Rook),
                 Some('b') => Some(Piece::Bishop),
                 Some('n') => Some(Piece::Knight),
-                _ => return None, // fifth char exists but is not a valid promo piece
+                _ => return None,
             }
         } else {
             None
         };
 
-        // Find a legal move matching from/to and optional promotion.
+        // Try with effective_to (handles castling remapping), fall back to original to
         let matches: Vec<usize> = self
             .legal_moves
             .iter()
             .enumerate()
             .filter(|(_, (mv, _))| {
-                mv.from == from && mv.to == to && mv.promotion == promo_piece
+                mv.from == from
+                    && (mv.to == effective_to || mv.to == to)
+                    && mv.promotion == promo_piece
             })
             .map(|(i, _)| i)
             .collect();
 
-        // If nothing matched, don't claim ownership — fall through to SAN matching
-        // (the caller will reach this branch only when the buffer *could* be a
-        // from/to string, so returning NoMatch here is fine).
+        // If multiple matches are all promotions and no suffix given, default to queen
+        if matches.len() > 1 && promo_piece.is_none() {
+            let all_promos = matches.iter().all(|&i| self.legal_moves[i].0.promotion.is_some());
+            if all_promos {
+                if let Some(&qi) = matches.iter().find(|&&i| self.legal_moves[i].0.promotion == Some(Piece::Queen)) {
+                    return Some(InputResult::Exact(self.legal_moves[qi].0));
+                }
+            }
+        }
+
         Some(match matches.len() {
             0 => InputResult::NoMatch,
             1 => InputResult::Exact(self.legal_moves[matches[0]].0),

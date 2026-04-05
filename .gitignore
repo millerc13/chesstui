@@ -2,3 +2,11 @@
 *.swp
 *.swo
 .DS_Store
+.env
+.env.local
+.playwright-mcp/
+.cargo/
+chess_*.png
+logo-dark.png
+chess_sprites/
+/tmp/

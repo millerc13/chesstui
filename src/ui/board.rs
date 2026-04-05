@@ -1,27 +1,35 @@
 use cozy_chess::{Color as ChessColor, Move, Piece, Square};
 use ratatui::buffer::Buffer;
-use ratatui::layout::Rect;
-use ratatui::style::{Color, Style};
+use ratatui::layout::{Position, Rect};
+use ratatui::style::{Color, Modifier, Style};
 use ratatui::widgets::Widget;
 
 use crate::theme::Theme;
+use super::pieces;
 
-/// Unicode chess piece symbols.
-fn piece_symbol(piece: Piece, color: ChessColor) -> &'static str {
-    match (color, piece) {
-        (ChessColor::White, Piece::King)   => "\u{2654}",
-        (ChessColor::White, Piece::Queen)  => "\u{2655}",
-        (ChessColor::White, Piece::Rook)   => "\u{2656}",
-        (ChessColor::White, Piece::Bishop) => "\u{2657}",
-        (ChessColor::White, Piece::Knight) => "\u{2658}",
-        (ChessColor::White, Piece::Pawn)   => "\u{2659}",
-        (ChessColor::Black, Piece::King)   => "\u{265a}",
-        (ChessColor::Black, Piece::Queen)  => "\u{265b}",
-        (ChessColor::Black, Piece::Rook)   => "\u{265c}",
-        (ChessColor::Black, Piece::Bishop) => "\u{265d}",
-        (ChessColor::Black, Piece::Knight) => "\u{265e}",
-        (ChessColor::Black, Piece::Pawn)   => "\u{265f}",
+fn put(buf: &mut Buffer, area: Rect, x: u16, y: u16, c: char, style: Style) {
+    if x >= area.x && y >= area.y && x < area.x + area.width && y < area.y + area.height {
+        if let Some(cell) = buf.cell_mut(Position::new(x, y)) {
+            cell.set_char(c);
+            cell.set_style(style);
+        }
     }
+}
+
+/// Query the actual character cell aspect ratio (height / width in pixels).
+/// Returns something like 2.0–2.5 depending on terminal font.
+/// Falls back to 2.0 if pixel dimensions are unavailable.
+pub fn cell_aspect_ratio() -> f32 {
+    if let Ok(ws) = crossterm::terminal::window_size() {
+        if ws.columns > 0 && ws.rows > 0 && ws.width > 0 && ws.height > 0 {
+            let cell_w = ws.width as f32 / ws.columns as f32;
+            let cell_h = ws.height as f32 / ws.rows as f32;
+            if cell_w > 0.0 {
+                return cell_h / cell_w;
+            }
+        }
+    }
+    2.0 // safe default
 }
 
 pub struct ChessBoardWidget<'a> {
@@ -34,156 +42,180 @@ pub struct ChessBoardWidget<'a> {
     last_move: Option<(Square, Square)>,
     in_check: bool,
     king_square: Option<Square>,
+    show_move_hints: bool,
 }
 
 impl<'a> ChessBoardWidget<'a> {
     pub fn new(board: &'a cozy_chess::Board, theme: &'a Theme) -> Self {
-        // Find if the side to move is in check and where the king is
         let in_check = !board.checkers().is_empty();
         let king_square = if in_check {
             let side = board.side_to_move();
             let kings = board.pieces(Piece::King) & board.colors(side);
-            // There should be exactly one king
             let mut sq = None;
-            for s in kings {
-                sq = Some(s);
-            }
+            for s in kings { sq = Some(s); }
             sq
         } else {
             None
         };
 
         Self {
-            board,
-            theme,
-            flipped: false,
-            cursor: None,
-            selected: None,
-            legal_moves: &[],
-            last_move: None,
-            in_check,
-            king_square,
+            board, theme, flipped: false, cursor: None, selected: None,
+            legal_moves: &[], last_move: None, in_check, king_square,
+            show_move_hints: false,
         }
     }
 
-    pub fn flipped(mut self, flipped: bool) -> Self {
-        self.flipped = flipped;
-        self
-    }
+    pub fn flipped(mut self, flipped: bool) -> Self { self.flipped = flipped; self }
+    pub fn cursor(mut self, file: u8, rank: u8) -> Self { self.cursor = Some((file, rank)); self }
+    pub fn selected(mut self, sq: Option<Square>) -> Self { self.selected = sq; self }
+    pub fn legal_moves(mut self, moves: &'a [Move]) -> Self { self.legal_moves = moves; self }
+    pub fn last_move(mut self, lm: Option<(Square, Square)>) -> Self { self.last_move = lm; self }
+    pub fn show_move_hints(mut self, show: bool) -> Self { self.show_move_hints = show; self }
 
-    pub fn cursor(mut self, file: u8, rank: u8) -> Self {
-        self.cursor = Some((file, rank));
-        self
-    }
-
-    pub fn selected(mut self, sq: Option<Square>) -> Self {
-        self.selected = sq;
-        self
-    }
-
-    pub fn legal_moves(mut self, moves: &'a [Move]) -> Self {
-        self.legal_moves = moves;
-        self
-    }
-
-    pub fn last_move(mut self, lm: Option<(Square, Square)>) -> Self {
-        self.last_move = lm;
-        self
-    }
-
-    /// Convert display row/col (0-7) to chess file/rank indices,
-    /// accounting for flip.
-    fn display_to_chess(&self, display_col: u8, display_row: u8) -> (u8, u8) {
-        if self.flipped {
-            (7 - display_col, display_row)
-        } else {
-            (display_col, 7 - display_row)
-        }
+    fn display_to_chess(&self, dc: u8, dr: u8) -> (u8, u8) {
+        if self.flipped { (7 - dc, dr) } else { (dc, 7 - dr) }
     }
 }
 
 impl Widget for ChessBoardWidget<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        // Board needs: 1 col for rank labels + 16 cols (8 squares * 2 chars) + 1 col padding
-        // and 8 rows + 1 row for file labels
-        let board_x = area.x + 1; // 1 col for rank labels
-        let board_y = area.y;
+        let label_col_w: u16 = 2;
+        let label_row_h: u16 = 1;
 
-        // Render 8x8 grid
-        for display_row in 0..8u8 {
-            for display_col in 0..8u8 {
-                let (file, rank) = self.display_to_chess(display_col, display_row);
+        let available_w = area.width.saturating_sub(label_col_w);
+        let available_h = area.height.saturating_sub(label_row_h);
+
+        // Query the real cell aspect ratio from the terminal.
+        // A cell that is 2.3× taller than wide needs cw = round(2.3 * ch) to look square.
+        let ratio = cell_aspect_ratio();
+
+        // Find largest ch where cw = round(ratio * ch) fits in available space.
+        let max_ch = available_h / 8;
+        let mut ch: u16 = max_ch.max(1);
+        let mut cw: u16;
+        loop {
+            cw = (ratio * ch as f32).round() as u16;
+            if cw * 8 <= available_w {
+                break;
+            }
+            if ch <= 1 {
+                cw = available_w / 8;
+                break;
+            }
+            ch -= 1;
+        }
+        ch = ch.max(1);
+        cw = cw.max(2);
+
+        let board_w = 8 * cw;
+        let board_h = 8 * ch;
+
+        // Center board in available area
+        let ox = area.x + (area.width.saturating_sub(board_w + label_col_w)) / 2;
+        let oy = area.y + (area.height.saturating_sub(board_h + label_row_h)) / 2;
+        let bx = ox + label_col_w;
+        let by = oy;
+
+        for dr in 0..8u8 {
+            for dc in 0..8u8 {
+                let (file, rank) = self.display_to_chess(dc, dr);
                 let sq = Square::new(
                     cozy_chess::File::index(file as usize),
                     cozy_chess::Rank::index(rank as usize),
                 );
 
-                // Determine background color with highlight priority
-                let bg = self.determine_bg(file, rank, sq, display_col, display_row);
+                let is_light = (file + rank) % 2 != 0;
+                let highlight = self.highlight_bg(file, rank, sq);
+                let is_legal = self.selected.is_some()
+                    && self.legal_moves.iter().any(|m| m.to == sq);
 
-                // Determine piece on this square
-                let (symbol, fg) = self.piece_at(sq);
+                let sq_bg = match highlight {
+                    Some(bg) => bg,
+                    None if is_light => self.theme.light_square,
+                    None => self.theme.dark_square,
+                };
 
-                let style = Style::default().fg(fg).bg(bg);
-                let x = board_x + (display_col as u16) * 2;
-                let y = board_y + display_row as u16;
+                let cx = bx + (dc as u16) * cw;
+                let cy = by + (dr as u16) * ch;
 
-                if x + 1 < area.x + area.width && y < area.y + area.height {
-                    buf.set_string(x, y, symbol, style);
+                // Fill square with background
+                let fill = Style::default().bg(sq_bg);
+                for row in 0..ch {
+                    for col in 0..cw {
+                        put(buf, area, cx + col, cy + row, ' ', fill);
+                    }
+                }
+
+                // Draw piece
+                if let Some((piece, color)) = self.get_piece(sq) {
+                    let fg = if color == ChessColor::White {
+                        self.theme.white_piece
+                    } else {
+                        self.theme.black_piece
+                    };
+                    pieces::draw_piece(buf, area, cx, cy, cw, ch, piece, fg, sq_bg);
+                    // Show hint on occupied squares that are capture targets
+                    if is_legal && self.show_move_hints {
+                        let hint = format!("{}", sq);
+                        let hint_style = Style::default()
+                            .fg(self.theme.accent)
+                            .bg(sq_bg)
+                            .add_modifier(Modifier::BOLD);
+                        let hx = cx + cw.saturating_sub(hint.len() as u16);
+                        let hy = cy + ch.saturating_sub(1);
+                        for (i, c) in hint.chars().enumerate() {
+                            put(buf, area, hx + i as u16, hy, c, hint_style);
+                        }
+                    }
+                } else if is_legal {
+                    if self.show_move_hints {
+                        // Show square name centered in the cell
+                        let hint = format!("{}", sq);
+                        let hint_style = Style::default()
+                            .fg(self.theme.accent)
+                            .bg(sq_bg)
+                            .add_modifier(Modifier::BOLD);
+                        let hx = cx + (cw.saturating_sub(hint.len() as u16)) / 2;
+                        let hy = cy + ch / 2;
+                        for (i, c) in hint.chars().enumerate() {
+                            put(buf, area, hx + i as u16, hy, c, hint_style);
+                        }
+                    } else {
+                        let dot_style = Style::default().fg(self.theme.accent).bg(sq_bg);
+                        put(buf, area, cx + cw / 2, cy + ch / 2, '\u{2022}', dot_style);
+                    }
                 }
             }
         }
 
         // Rank labels
-        for display_row in 0..8u8 {
-            let (_, rank) = self.display_to_chess(0, display_row);
-            let label = format!("{}", rank + 1);
-            let y = board_y + display_row as u16;
-            if y < area.y + area.height {
-                buf.set_string(
-                    area.x,
-                    y,
-                    &label,
-                    Style::default().fg(self.theme.text_dim),
-                );
-            }
+        let label_style = Style::default()
+            .fg(self.theme.accent_secondary)
+            .add_modifier(Modifier::DIM);
+        for dr in 0..8u8 {
+            let (_, rank) = self.display_to_chess(0, dr);
+            let y = by + (dr as u16) * ch + ch / 2;
+            put(buf, area, ox, y, (b'1' + rank) as char, label_style);
         }
 
         // File labels
-        let file_y = board_y + 8;
-        if file_y < area.y + area.height {
-            for display_col in 0..8u8 {
-                let (file, _) = self.display_to_chess(display_col, 0);
-                let label = (b'a' + file) as char;
-                let x = board_x + (display_col as u16) * 2;
-                if x < area.x + area.width {
-                    buf.set_string(
-                        x,
-                        file_y,
-                        &format!("{} ", label),
-                        Style::default().fg(self.theme.text_dim),
-                    );
-                }
-            }
+        let fy = by + board_h;
+        for dc in 0..8u8 {
+            let (file, _) = self.display_to_chess(dc, 0);
+            let x = bx + (dc as u16) * cw + cw / 2;
+            put(buf, area, x, fy, (b'a' + file) as char, label_style);
         }
     }
 }
 
 impl ChessBoardWidget<'_> {
-    fn determine_bg(&self, file: u8, rank: u8, sq: Square, _display_col: u8, _display_row: u8) -> Color {
-        let is_light = (file + rank) % 2 != 0;
-
-        // Check highlight (highest priority)
+    fn highlight_bg(&self, file: u8, rank: u8, sq: Square) -> Option<Color> {
         if self.in_check {
             if let Some(king_sq) = self.king_square {
-                if sq == king_sq {
-                    return self.theme.check_bg;
-                }
+                if sq == king_sq { return Some(self.theme.check_bg); }
             }
         }
 
-        // Cursor — cursor coords are display-space (file 0-7, rank 0-7 where 0=bottom).
-        // Convert to chess square the same way App::cursor_square() does.
         if let Some((cf, cr)) = self.cursor {
             let (chess_f, chess_r) = if self.flipped {
                 (7 - cf, 7 - cr)
@@ -194,54 +226,42 @@ impl ChessBoardWidget<'_> {
                 cozy_chess::File::index(chess_f as usize),
                 cozy_chess::Rank::index(chess_r as usize),
             );
-            if sq == cursor_sq {
-                return self.theme.cursor_bg;
-            }
+            if sq == cursor_sq { return Some(self.theme.cursor_bg); }
         }
 
-        // Selected square
         if let Some(sel) = self.selected {
-            if sq == sel {
-                return self.theme.selected_bg;
-            }
+            if sq == sel { return Some(self.theme.selected_bg); }
         }
 
-        // Legal move destinations
-        if self.legal_moves.iter().any(|m| m.to == sq) {
-            return self.theme.legal_move_bg;
+        if self.selected.is_some() && self.legal_moves.iter().any(|m| m.to == sq) {
+            return Some(self.theme.legal_move_bg);
         }
 
-        // Last move
         if let Some((from, to)) = self.last_move {
             if sq == from || sq == to {
-                return if is_light {
+                let is_light = (file + rank) % 2 != 0;
+                return Some(if is_light {
                     self.theme.last_move_light
                 } else {
                     self.theme.last_move_dark
-                };
+                });
             }
         }
 
-        // Base square color
-        self.theme.square_bg(file, rank)
+        None
     }
 
-    fn piece_at(&self, sq: Square) -> (&str, Color) {
+    fn get_piece(&self, sq: Square) -> Option<(Piece, ChessColor)> {
         for piece in [Piece::King, Piece::Queen, Piece::Rook, Piece::Bishop, Piece::Knight, Piece::Pawn] {
             if self.board.pieces(piece).has(sq) {
-                if self.board.colors(ChessColor::White).has(sq) {
-                    return (piece_symbol(piece, ChessColor::White), self.theme.white_piece);
+                let color = if self.board.colors(ChessColor::White).has(sq) {
+                    ChessColor::White
                 } else {
-                    return (piece_symbol(piece, ChessColor::Black), self.theme.black_piece);
-                }
+                    ChessColor::Black
+                };
+                return Some((piece, color));
             }
         }
-
-        // Empty square — show dot for legal moves
-        if self.legal_moves.iter().any(|m| m.to == sq) {
-            return ("\u{00b7} ", self.theme.text_dim);
-        }
-
-        ("  ", Color::Reset)
+        None
     }
 }

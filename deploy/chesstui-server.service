@@ -1,6 +1,6 @@
 [Unit]
 Description=ChessTUI Multiplayer Server
-After=network-online.target
+After=network-online.target postgresql.service
 Wants=network-online.target
 
 [Service]
@@ -36,6 +36,7 @@ StandardError=journal
 SyslogIdentifier=chesstui-server
 
 # Environment
+EnvironmentFile=/etc/chesstui/server.env
 Environment=RUST_LOG=chesstui=info
 
 [Install]

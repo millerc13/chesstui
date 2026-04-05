@@ -1,19 +1,145 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use std::io::Write;
 
 use crate::app::{App, InputMode, MenuTab, MultiplayerState, Screen};
+use crate::config::PieceStyle;
 use crate::game::move_input::{InputResult, MoveInputParser};
 
+fn debug_log(msg: &str) {
+    if let Ok(mut f) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("/tmp/chesstui-debug.log")
+    {
+        let _ = writeln!(f, "[{}] {}", chrono::Local::now().format("%H:%M:%S%.3f"), msg);
+    }
+}
+
+/// Returns true if the mouse event changed app state and a redraw is needed.
+pub fn handle_mouse(app: &mut App, event: crossterm::event::MouseEvent) -> bool {
+    use crossterm::event::{MouseEventKind, MouseButton};
+
+    if !matches!(event.kind, MouseEventKind::Down(MouseButton::Left)) {
+        return false;
+    }
+    if !matches!(app.screen, Screen::InGame) || !matches!(app.mode, InputMode::Play) {
+        return false;
+    }
+    if app.pending_promotion.is_some() {
+        return false;
+    }
+
+    let layout = &app.board_layout;
+    if layout.sq_w < 0.1 || layout.sq_h < 0.1 { return false; }
+
+    let col = event.column;
+    let row = event.row;
+    if col < layout.board_x || row < layout.board_y { return false; }
+
+    let dc = ((col - layout.board_x) as f32 / layout.sq_w) as u8;
+    let dr = ((row - layout.board_y) as f32 / layout.sq_h) as u8;
+    if dc >= 8 || dr >= 8 { return false; }
+
+    let (file, rank) = if app.board_flipped {
+        (7 - dc, dr)
+    } else {
+        (dc, 7 - dr)
+    };
+
+    let sq = cozy_chess::Square::new(
+        cozy_chess::File::index(file as usize),
+        cozy_chess::Rank::index(rank as usize),
+    );
+
+    app.set_cursor_to_square(sq);
+    app.select_square(sq);
+    app.try_ai_move();
+    true
+}
+
 pub fn handle_key(app: &mut App, key: KeyEvent) {
+    debug_log(&format!(
+        "handle_key: kind={:?} code={:?} modifiers={:?} screen={:?} show_help={}",
+        key.kind, key.code, key.modifiers, app.screen, app.show_help
+    ));
+
     if key.kind != crossterm::event::KeyEventKind::Press {
+        debug_log("  -> skipped: not a Press event");
+        return;
+    }
+
+    // When help modal is open, route all input there first
+    if app.show_help {
+        debug_log("  -> routing to handle_help_input (show_help=true)");
+        handle_help_input(app, key);
         return;
     }
 
     match app.screen {
-        Screen::ColorPicker => handle_color_picker(app, key),
-        Screen::MainMenu => handle_menu(app, key),
-        Screen::InGame => handle_in_game(app, key),
-        Screen::PostGame => handle_postgame(app, key),
-        Screen::ReplayViewer => handle_replay_viewer(app, key),
+        Screen::Launch => {
+            debug_log("  -> routing to handle_launch");
+            handle_launch(app, key);
+        }
+        Screen::ColorPicker => {
+            debug_log("  -> routing to handle_color_picker");
+            handle_color_picker(app, key);
+        }
+        Screen::MainMenu => {
+            debug_log("  -> routing to handle_menu");
+            handle_menu(app, key);
+        }
+        Screen::InGame => {
+            debug_log("  -> routing to handle_in_game");
+            handle_in_game(app, key);
+        }
+        Screen::PostGame => {
+            debug_log("  -> routing to handle_postgame");
+            handle_postgame(app, key);
+        }
+        Screen::ReplayViewer => {
+            debug_log("  -> routing to handle_replay_viewer");
+            handle_replay_viewer(app, key);
+        }
+    }
+}
+
+// ── Launch Screen ─────────────────────────────────────────────────────────
+
+fn handle_launch(app: &mut App, key: KeyEvent) {
+    match key.code {
+        KeyCode::Char('j') | KeyCode::Down => {
+            app.launch_selection = (app.launch_selection + 1).min(2);
+        }
+        KeyCode::Char('k') | KeyCode::Up => {
+            app.launch_selection = app.launch_selection.saturating_sub(1);
+        }
+        KeyCode::Enter => {
+            match app.launch_selection {
+                0 => {
+                    // Sign Up -> multiplayer signup flow
+                    app.screen = Screen::MainMenu;
+                    app.active_tab = MenuTab::Multiplayer;
+                }
+                1 => {
+                    // Log In -> multiplayer login flow
+                    app.has_account = true;
+                    app.screen = Screen::MainMenu;
+                    app.active_tab = MenuTab::Multiplayer;
+                }
+                2 => {
+                    // Guest -> main menu
+                    app.screen = Screen::MainMenu;
+                }
+                _ => {}
+            }
+        }
+        KeyCode::Char('q') => {
+            app.should_quit = true;
+        }
+        KeyCode::Char('?') => {
+            app.show_help = !app.show_help;
+        }
+        _ => {}
     }
 }
 
@@ -33,6 +159,11 @@ fn handle_color_picker(app: &mut App, key: KeyEvent) {
         }
         KeyCode::Enter => {
             app.apply_color_scheme();
+            // Save the color scheme to config so it persists
+            let scheme_name = crate::theme::ColorScheme::ALL[app.color_scheme_index].name();
+            let mut config = crate::config::Config::load();
+            config.color_scheme = Some(scheme_name.to_string());
+            config.save();
             app.screen = Screen::MainMenu;
         }
         KeyCode::Char('q') => app.should_quit = true,
@@ -43,11 +174,32 @@ fn handle_color_picker(app: &mut App, key: KeyEvent) {
 // ── Menu ────────────────────────────────────────────────────────────────────
 
 fn handle_menu(app: &mut App, key: KeyEvent) {
+    debug_log(&format!(
+        "  handle_menu: active_tab={:?} multiplayer_state={:?} code={:?}",
+        app.active_tab, app.multiplayer_state, key.code
+    ));
+
+    // When multiplayer tab is in a text input state, send all keys there first
+    if app.active_tab == MenuTab::Multiplayer && multiplayer_is_text_input(&app.multiplayer_state) {
+        debug_log("  -> early return: multiplayer text input mode");
+        handle_multiplayer_tab(app, key);
+        return;
+    }
+
     let tab_count = MenuTab::ALL.len();
+
+    // On Play tab with VS Computer selected, left/right adjust AI difficulty
+    // instead of switching tabs
+    let play_tab_intercept_lr = app.active_tab == MenuTab::Play
+        && app.play_selection < crate::app::PlayMenuItem::ALL.len()
+        && matches!(
+            crate::app::PlayMenuItem::ALL[app.play_selection],
+            crate::app::PlayMenuItem::VsComputer
+        );
 
     // Tab switching with left/right or h/l
     match key.code {
-        KeyCode::Left | KeyCode::Char('h') => {
+        KeyCode::Left | KeyCode::Char('h') if !play_tab_intercept_lr => {
             let idx = MenuTab::ALL.iter().position(|t| *t == app.active_tab).unwrap_or(0);
             let new_idx = (idx + tab_count - 1) % tab_count;
             app.active_tab = MenuTab::ALL[new_idx];
@@ -56,7 +208,7 @@ fn handle_menu(app: &mut App, key: KeyEvent) {
             }
             return;
         }
-        KeyCode::Right | KeyCode::Char('l') => {
+        KeyCode::Right | KeyCode::Char('l') if !play_tab_intercept_lr => {
             let idx = MenuTab::ALL.iter().position(|t| *t == app.active_tab).unwrap_or(0);
             let new_idx = (idx + 1) % tab_count;
             app.active_tab = MenuTab::ALL[new_idx];
@@ -69,6 +221,12 @@ fn handle_menu(app: &mut App, key: KeyEvent) {
             app.should_quit = true;
             return;
         }
+        KeyCode::Char('?') => {
+            app.show_help = !app.show_help;
+            app.help_search.clear();
+            app.help_scroll = 0;
+            return;
+        }
         _ => {}
     }
 
@@ -77,12 +235,24 @@ fn handle_menu(app: &mut App, key: KeyEvent) {
         MenuTab::Play => handle_play_tab(app, key),
         MenuTab::Replays => handle_replays_tab(app, key),
         MenuTab::Multiplayer => handle_multiplayer_tab(app, key),
-        _ => {} // placeholder tabs have no interaction
+        MenuTab::Settings => handle_settings_tab(app, key),
     }
 }
 
+fn multiplayer_is_text_input(state: &MultiplayerState) -> bool {
+    matches!(
+        state,
+        MultiplayerState::EnteringEmail
+            | MultiplayerState::EnteringOtp
+            | MultiplayerState::EnteringDisplayName
+            | MultiplayerState::EnteringPassword
+            | MultiplayerState::EnteringLoginPassword
+    )
+}
+
 fn handle_play_tab(app: &mut App, key: KeyEvent) {
-    let item_count = 3; // Play vs AI, Local Game, Quit
+    use crate::app::PlayMenuItem;
+    let item_count = PlayMenuItem::ALL.len();
     match key.code {
         KeyCode::Char('j') | KeyCode::Down => {
             app.play_selection = (app.play_selection + 1) % item_count;
@@ -90,12 +260,38 @@ fn handle_play_tab(app: &mut App, key: KeyEvent) {
         KeyCode::Char('k') | KeyCode::Up => {
             app.play_selection = (app.play_selection + item_count - 1) % item_count;
         }
+        KeyCode::Left | KeyCode::Char('h') => {
+            // Decrease AI difficulty on VS Computer card
+            if app.play_selection < item_count {
+                if let PlayMenuItem::VsComputer = PlayMenuItem::ALL[app.play_selection] {
+                    if app.ai_difficulty > 1 {
+                        app.ai_difficulty -= 1;
+                    }
+                }
+            }
+        }
+        KeyCode::Right | KeyCode::Char('l') => {
+            // Increase AI difficulty on VS Computer card
+            if app.play_selection < item_count {
+                if let PlayMenuItem::VsComputer = PlayMenuItem::ALL[app.play_selection] {
+                    if app.ai_difficulty < 10 {
+                        app.ai_difficulty += 1;
+                    }
+                }
+            }
+        }
         KeyCode::Enter => {
-            match app.play_selection {
-                0 => app.start_ai_game(),
-                1 => app.start_new_game(),
-                2 => app.should_quit = true,
-                _ => {}
+            if app.play_selection < item_count {
+                let item = PlayMenuItem::ALL[app.play_selection];
+                if !item.is_available() {
+                    app.status_message = "Coming soon!".to_string();
+                } else {
+                    match item {
+                        PlayMenuItem::VsComputer => app.start_ai_game(),
+                        PlayMenuItem::LocalGame => app.start_new_game(),
+                        _ => {}
+                    }
+                }
             }
         }
         _ => {}
@@ -124,13 +320,45 @@ fn handle_replays_tab(app: &mut App, key: KeyEvent) {
     }
 }
 
+fn handle_settings_tab(app: &mut App, key: KeyEvent) {
+    let count = PieceStyle::ALL.len();
+    match key.code {
+        KeyCode::Char('j') | KeyCode::Down => {
+            app.settings_style_index = (app.settings_style_index + 1) % count;
+        }
+        KeyCode::Char('k') | KeyCode::Up => {
+            app.settings_style_index = (app.settings_style_index + count - 1) % count;
+        }
+        KeyCode::Enter => {
+            app.apply_piece_style();
+        }
+        _ => {}
+    }
+}
+
 fn handle_multiplayer_tab(app: &mut App, key: KeyEvent) {
     match &app.multiplayer_state.clone() {
         MultiplayerState::LoggedOut => match key.code {
+            KeyCode::Char('j') | KeyCode::Down => {
+                if app.multiplayer_selection < 1 {
+                    app.multiplayer_selection += 1;
+                }
+            }
+            KeyCode::Char('k') | KeyCode::Up => {
+                app.multiplayer_selection = app.multiplayer_selection.saturating_sub(1);
+            }
             KeyCode::Enter => {
                 let url = app.server_url.clone();
                 app.network = Some(crate::network::NetworkClient::connect(&url));
-                app.multiplayer_state = MultiplayerState::EnteringEmail;
+                if app.multiplayer_selection == 0 {
+                    // Sign Up
+                    app.has_account = false;
+                    app.multiplayer_state = MultiplayerState::EnteringEmail;
+                } else {
+                    // Log In
+                    app.has_account = true;
+                    app.multiplayer_state = MultiplayerState::EnteringEmail;
+                }
             }
             _ => {}
         },
@@ -141,12 +369,18 @@ fn handle_multiplayer_tab(app: &mut App, key: KeyEvent) {
             }
             KeyCode::Enter => {
                 if !app.login_input.is_empty() {
-                    if let Some(ref net) = app.network {
-                        net.send(crate::protocol::ClientMessage::Authenticate {
-                            email: app.login_input.clone(),
-                        });
+                    if app.has_account {
+                        // Go to password entry for login
+                        app.multiplayer_state = MultiplayerState::EnteringLoginPassword;
+                    } else {
+                        // Send OTP for signup
+                        if let Some(ref net) = app.network {
+                            net.send(crate::protocol::ClientMessage::Authenticate {
+                                email: app.login_input.clone(),
+                            });
+                        }
+                        app.multiplayer_state = MultiplayerState::WaitingForOtp;
                     }
-                    app.multiplayer_state = MultiplayerState::WaitingForOtp;
                 }
             }
             KeyCode::Esc => {
@@ -176,6 +410,47 @@ fn handle_multiplayer_tab(app: &mut App, key: KeyEvent) {
             }
             KeyCode::Esc => {
                 app.otp_input.clear();
+                app.multiplayer_state = MultiplayerState::EnteringEmail;
+            }
+            _ => {}
+        },
+        MultiplayerState::EnteringPassword => match key.code {
+            KeyCode::Char(c) => app.password_input.push(c),
+            KeyCode::Backspace => {
+                app.password_input.pop();
+            }
+            KeyCode::Enter => {
+                if app.password_input.len() >= 6 {
+                    if let Some(ref net) = app.network {
+                        net.send(crate::protocol::ClientMessage::SetPassword {
+                            password: app.password_input.clone(),
+                        });
+                    }
+                }
+            }
+            KeyCode::Esc => {
+                app.password_input.clear();
+                app.multiplayer_state = MultiplayerState::LoggedOut;
+            }
+            _ => {}
+        },
+        MultiplayerState::EnteringLoginPassword => match key.code {
+            KeyCode::Char(c) => app.password_input.push(c),
+            KeyCode::Backspace => {
+                app.password_input.pop();
+            }
+            KeyCode::Enter => {
+                if !app.password_input.is_empty() {
+                    if let Some(ref net) = app.network {
+                        net.send(crate::protocol::ClientMessage::LoginWithPassword {
+                            email: app.login_input.clone(),
+                            password: app.password_input.clone(),
+                        });
+                    }
+                }
+            }
+            KeyCode::Esc => {
+                app.password_input.clear();
                 app.multiplayer_state = MultiplayerState::EnteringEmail;
             }
             _ => {}
@@ -242,6 +517,50 @@ fn handle_multiplayer_tab(app: &mut App, key: KeyEvent) {
     }
 }
 
+// ── Help Modal ─────────────────────────────────────────────────────────────
+
+fn handle_help_input(app: &mut App, key: KeyEvent) {
+    debug_log(&format!("  handle_help_input: code={:?} show_help={}", key.code, app.show_help));
+    // Handle Ctrl+j / Ctrl+k for scrolling before the generic Char(c) arm
+    if key.modifiers.contains(KeyModifiers::CONTROL) {
+        match key.code {
+            KeyCode::Char('j') => {
+                app.help_scroll = app.help_scroll.saturating_add(1);
+                return;
+            }
+            KeyCode::Char('k') => {
+                app.help_scroll = app.help_scroll.saturating_sub(1);
+                return;
+            }
+            _ => {}
+        }
+    }
+
+    match key.code {
+        KeyCode::Esc => {
+            app.show_help = false;
+            app.help_search.clear();
+            app.help_scroll = 0;
+            app.board_image_dirty = true;
+            app.kitty_image_hash = 0; // force Kitty retransmit after modal closes
+        }
+        KeyCode::Backspace => {
+            app.help_search.pop();
+        }
+        KeyCode::Down => {
+            app.help_scroll = app.help_scroll.saturating_add(1);
+        }
+        KeyCode::Up => {
+            app.help_scroll = app.help_scroll.saturating_sub(1);
+        }
+        KeyCode::Char(c) => {
+            app.help_search.push(c);
+            app.help_scroll = 0;
+        }
+        _ => {}
+    }
+}
+
 // ── In-Game ─────────────────────────────────────────────────────────────────
 
 fn handle_in_game(app: &mut App, key: KeyEvent) {
@@ -260,6 +579,11 @@ fn handle_in_game(app: &mut App, key: KeyEvent) {
 }
 
 fn handle_play(app: &mut App, key: KeyEvent) {
+    debug_log(&format!(
+        "  handle_play: code={:?} modifiers={:?} pending_promo={}",
+        key.code, key.modifiers, app.pending_promotion.is_some()
+    ));
+
     // Promotion takes priority
     if app.pending_promotion.is_some() {
         handle_promotion(app, key);
@@ -344,7 +668,11 @@ fn handle_play(app: &mut App, key: KeyEvent) {
 
         // ── Help toggle ──
         KeyCode::Char('?') => {
+            debug_log(&format!("  '?' pressed! show_help was {}, toggling", app.show_help));
             app.show_help = !app.show_help;
+            app.help_search.clear();
+            app.help_scroll = 0;
+            debug_log(&format!("  show_help is now {}", app.show_help));
         }
 
         // ── Quit (only when buffer empty) ──
@@ -380,7 +708,9 @@ fn handle_play(app: &mut App, key: KeyEvent) {
             feed_input_char(app, c);
         }
 
-        _ => {}
+        other => {
+            debug_log(&format!("  handle_play UNMATCHED: code={:?} modifiers={:?}", other, key.modifiers));
+        }
     }
 }
 
@@ -431,9 +761,17 @@ fn feed_input_char(app: &mut App, c: char) {
         InputResult::NoMatch => {
             app.status_message = format!("No match for '{}'", app.input_buffer);
             app.input_buffer.clear();
+            app.deselect();
         }
         InputResult::NeedMore(_) => {
-            // Stay, buffer is displayed in command bar
+            // When we have a valid source square (2 chars), move cursor there
+            // and select it to show available moves
+            if app.input_buffer.len() == 2 {
+                if let Ok(sq) = app.input_buffer.parse::<cozy_chess::Square>() {
+                    app.set_cursor_to_square(sq);
+                    app.select_square(sq);
+                }
+            }
         }
     }
 }
@@ -472,12 +810,26 @@ fn execute_command(app: &mut App, cmd: &str) {
             crate::game::replay::save_game(&app.game, &app.game_mode, &result);
             app.status_message = format!("{:?} resigned", loser);
             app.screen = Screen::PostGame;
+            app.postgame_selection = 0;
         }
         "flip" | "f" => {
             app.board_flipped = !app.board_flipped;
+            app.board_image_dirty = true;
         }
         "new" | "n" => {
             app.start_new_game();
+        }
+        "debug" | "dbg" => {
+            app.show_debug = !app.show_debug;
+        }
+        "kitty" => {
+            app.use_kitty = !app.use_kitty;
+            app.board_image_dirty = true;
+            app.status_message = if app.use_kitty {
+                "Kitty image rendering ON".to_string()
+            } else {
+                "Kitty image rendering OFF (character mode)".to_string()
+            };
         }
         _ => {
             app.status_message = format!("Unknown command: {}", cmd);
@@ -488,13 +840,114 @@ fn execute_command(app: &mut App, cmd: &str) {
 // ── Post-Game ───────────────────────────────────────────────────────────────
 
 fn handle_postgame(app: &mut App, key: KeyEvent) {
+    const POSTGAME_BUTTON_COUNT: usize = 4;
     match key.code {
-        KeyCode::Char('n') => app.start_new_game(),
-        KeyCode::Char('m') => {
+        KeyCode::Char('h') | KeyCode::Left => {
+            app.postgame_selection = app.postgame_selection.saturating_sub(1);
+        }
+        KeyCode::Char('l') | KeyCode::Right => {
+            if app.postgame_selection + 1 < POSTGAME_BUTTON_COUNT {
+                app.postgame_selection += 1;
+            }
+        }
+        KeyCode::Enter => {
+            match app.postgame_selection {
+                0 => {
+                    // Rematch — start a new game with the same mode
+                    let mode = app.game_mode.clone();
+                    match mode {
+                        crate::app::GameMode::VsAi(_) => app.start_ai_game(),
+                        _ => app.start_new_game(),
+                    }
+                }
+                1 => {
+                    // Review — set up replay viewer from current game
+                    let moves: Vec<String> = {
+                        let mut board = cozy_chess::Board::default();
+                        let mut sans = Vec::new();
+                        for record in app.game.move_history() {
+                            let san = crate::game::notation::to_algebraic(&board, &record.mv);
+                            board.play_unchecked(record.mv);
+                            sans.push(san);
+                        }
+                        sans
+                    };
+                    let saved = crate::game::replay::SavedGame {
+                        id: String::new(),
+                        date: String::new(),
+                        result: app.status_message.clone(),
+                        result_detail: String::new(),
+                        mode: format!("{:?}", app.game_mode),
+                        move_count: moves.len(),
+                        moves,
+                        white_player: None,
+                        black_player: None,
+                        server_game_id: None,
+                    };
+                    app.replay_viewer = Some(crate::app::ReplayViewerState::from_saved(saved));
+                    app.screen = Screen::ReplayViewer;
+                }
+                2 => {
+                    // Copy PGN — build PGN string and copy to clipboard
+                    let mut pgn = String::new();
+                    let mut board = cozy_chess::Board::default();
+                    for (i, record) in app.game.move_history().iter().enumerate() {
+                        if i % 2 == 0 {
+                            pgn.push_str(&format!("{}.", i / 2 + 1));
+                        }
+                        let san = crate::game::notation::to_algebraic(&board, &record.mv);
+                        pgn.push_str(&san);
+                        pgn.push(' ');
+                        board.play_unchecked(record.mv);
+                    }
+                    app.status_message = "PGN copied to clipboard!".to_string();
+                    #[cfg(target_os = "macos")]
+                    {
+                        use std::process::{Command, Stdio};
+                        if let Ok(mut child) = Command::new("pbcopy")
+                            .stdin(Stdio::piped())
+                            .spawn()
+                        {
+                            if let Some(ref mut stdin) = child.stdin {
+                                use std::io::Write;
+                                let _ = stdin.write_all(pgn.as_bytes());
+                            }
+                            let _ = child.wait();
+                        }
+                    }
+                    #[cfg(target_os = "linux")]
+                    {
+                        use std::process::{Command, Stdio};
+                        if let Ok(mut child) = Command::new("xclip")
+                            .args(["-selection", "clipboard"])
+                            .stdin(Stdio::piped())
+                            .spawn()
+                        {
+                            if let Some(ref mut stdin) = child.stdin {
+                                use std::io::Write;
+                                let _ = stdin.write_all(pgn.as_bytes());
+                            }
+                            let _ = child.wait();
+                        }
+                    }
+                }
+                3 => {
+                    // Menu
+                    app.screen = Screen::MainMenu;
+                    app.menu_selection = 0;
+                }
+                _ => {}
+            }
+        }
+        KeyCode::Char('q') => {
             app.screen = Screen::MainMenu;
             app.menu_selection = 0;
         }
-        KeyCode::Char('q') => app.should_quit = true,
+        KeyCode::Char('?') => {
+            app.show_help = !app.show_help;
+            app.help_search.clear();
+            app.help_scroll = 0;
+        }
         _ => {}
     }
 }
@@ -525,6 +978,7 @@ fn handle_replay_viewer(app: &mut App, key: KeyEvent) {
         }
         KeyCode::Char('f') => {
             app.board_flipped = !app.board_flipped;
+            app.board_image_dirty = true;
         }
         KeyCode::Char('q') | KeyCode::Esc => {
             app.replay_viewer = None;

@@ -1,10 +1,13 @@
-use ratatui::layout::{Alignment, Constraint, Layout, Rect};
+use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::Paragraph;
+use ratatui::widgets::{Block, Borders, BorderType, Paragraph};
 use ratatui::Frame;
 
 use crate::app::{App, MultiplayerState};
+use super::widgets::CardButton;
+
+const SPINNER: &[char] = &['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 
 pub fn draw_multiplayer_tab(frame: &mut Frame, app: &App, area: Rect) {
     match &app.multiplayer_state {
@@ -14,6 +17,8 @@ pub fn draw_multiplayer_tab(frame: &mut Frame, app: &App, area: Rect) {
         MultiplayerState::WaitingForOtp => draw_waiting_otp(frame, app, area),
         MultiplayerState::EnteringOtp => draw_otp_input(frame, app, area),
         MultiplayerState::EnteringDisplayName => draw_display_name_input(frame, app, area),
+        MultiplayerState::EnteringPassword => draw_password_input(frame, app, area, "Set a Password", "Min 6 characters · Enter to confirm"),
+        MultiplayerState::EnteringLoginPassword => draw_password_input(frame, app, area, "Enter Password", "Enter to log in · Esc to go back"),
         MultiplayerState::LoggedIn { display_name, elo } => {
             draw_logged_in(frame, app, area, display_name, *elo)
         }
@@ -23,58 +28,68 @@ pub fn draw_multiplayer_tab(frame: &mut Frame, app: &App, area: Rect) {
 }
 
 fn draw_logged_out(frame: &mut Frame, app: &App, area: Rect) {
-    let content = center_block(area, 40, 7);
-    let rows = Layout::vertical([
-        Constraint::Length(1), // spacer
-        Constraint::Length(1), // title
-        Constraint::Length(1), // spacer
-        Constraint::Length(1), // server url
-        Constraint::Length(1), // spacer
-        Constraint::Length(1), // hint
-    ])
-    .split(content);
+    let card_width: u16 = 36;
+    let card_height: u16 = 4;
+    let gap: u16 = 1;
+    let header_height: u16 = 3;
+    let total_height = header_height + 2 * card_height + gap;
+    let content = center_block(area, card_width, total_height);
 
-    let title = Paragraph::new(Line::from(Span::styled(
-        "Online Play",
-        Style::default()
-            .fg(app.theme.accent)
-            .add_modifier(Modifier::BOLD),
-    )))
-    .alignment(Alignment::Center);
-    frame.render_widget(title, rows[1]);
+    // Server URL line centered
+    let url_rect = Rect::new(content.x, content.y, card_width, 1);
+    let url_line = Paragraph::new(Line::from(vec![
+        Span::styled("Server: ", Style::default().fg(app.theme.text_dim)),
+        Span::styled(
+            &app.server_url,
+            Style::default().fg(app.theme.accent_secondary),
+        ),
+    ]));
+    frame.render_widget(url_line, url_rect);
 
-    let url = Paragraph::new(Line::from(Span::styled(
-        app.server_url.as_str(),
-        Style::default().fg(app.theme.text_dim),
-    )))
-    .alignment(Alignment::Center);
-    frame.render_widget(url, rows[3]);
-
-    let hint = Paragraph::new(Line::from(Span::styled(
-        "Press Enter to connect",
-        Style::default().fg(app.theme.text_primary),
-    )))
-    .alignment(Alignment::Center);
-    frame.render_widget(hint, rows[5]);
+    // CardButton items
+    let items: &[(&str, &str, &str)] = &[
+        ("◆", "Sign Up", "Create a new account"),
+        ("→", "Log In", "Welcome back"),
+    ];
+    for (i, (icon, title, sub)) in items.iter().enumerate() {
+        let y = content.y + header_height + i as u16 * (card_height + gap);
+        let card_area = Rect::new(content.x, y, card_width, card_height);
+        let card = CardButton::new(icon, title, sub, &app.theme)
+            .selected(i == app.multiplayer_selection);
+        frame.render_widget(card, card_area);
+    }
 }
 
 fn draw_connecting(frame: &mut Frame, app: &App, area: Rect) {
-    let content = center_block(area, 20, 3);
-    let rows = Layout::vertical([
-        Constraint::Length(1),
-        Constraint::Length(1),
-        Constraint::Length(1),
-    ])
-    .split(content);
+    let content = center_block(area, 36, 5);
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(app.theme.text_dim))
+        .title(Span::styled(
+            " Connecting ",
+            Style::default()
+                .fg(app.theme.accent)
+                .add_modifier(Modifier::BOLD),
+        ));
 
-    let msg = Paragraph::new(Line::from(Span::styled(
-        "Connecting...",
-        Style::default()
-            .fg(app.theme.accent)
-            .add_modifier(Modifier::BOLD),
-    )))
-    .alignment(Alignment::Center);
-    frame.render_widget(msg, rows[1]);
+    let spinner = SPINNER[(app.tick as usize) % SPINNER.len()];
+    let text = Paragraph::new(vec![
+        Line::from(""),
+        Line::from(vec![
+            Span::styled(
+                format!("  {} ", spinner),
+                Style::default().fg(app.theme.accent_secondary),
+            ),
+            Span::styled(
+                "Reaching server...",
+                Style::default().fg(app.theme.text_dim),
+            ),
+        ]),
+        Line::from(""),
+    ])
+    .block(block);
+    frame.render_widget(text, content);
 }
 
 fn draw_email_input(frame: &mut Frame, app: &App, area: Rect) {
@@ -84,44 +99,47 @@ fn draw_email_input(frame: &mut Frame, app: &App, area: Rect) {
         area,
         "Enter your email",
         &app.login_input.clone(),
-        "Enter to submit \u{00b7} Esc to cancel",
+        "Enter to submit · Esc to cancel",
     );
 }
 
 fn draw_waiting_otp(frame: &mut Frame, app: &App, area: Rect) {
     let content = center_block(area, 44, 7);
-    let rows = Layout::vertical([
-        Constraint::Length(1), // spacer
-        Constraint::Length(1), // title
-        Constraint::Length(1), // spacer
-        Constraint::Length(1), // detail
-        Constraint::Length(1), // spacer
-        Constraint::Length(1), // waiting
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(app.theme.text_dim))
+        .title(Span::styled(
+            " Check Your Email ",
+            Style::default()
+                .fg(app.theme.accent)
+                .add_modifier(Modifier::BOLD),
+        ));
+
+    let spinner = SPINNER[(app.tick as usize) % SPINNER.len()];
+    let text = Paragraph::new(vec![
+        Line::from(""),
+        Line::from(Span::styled(
+            "  A 6-digit code was sent to your email",
+            Style::default().fg(app.theme.text_bright),
+        )),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled(
+                format!("  {} ", spinner),
+                Style::default().fg(app.theme.accent_secondary),
+            ),
+            Span::styled(
+                "Waiting...",
+                Style::default()
+                    .fg(app.theme.text_dim)
+                    .add_modifier(Modifier::ITALIC),
+            ),
+        ]),
+        Line::from(""),
     ])
-    .split(content);
-
-    let title = Paragraph::new(Line::from(Span::styled(
-        "Check your email",
-        Style::default()
-            .fg(app.theme.accent)
-            .add_modifier(Modifier::BOLD),
-    )))
-    .alignment(Alignment::Center);
-    frame.render_widget(title, rows[1]);
-
-    let detail = Paragraph::new(Line::from(Span::styled(
-        "A 6-digit code was sent to your email",
-        Style::default().fg(app.theme.text_dim),
-    )))
-    .alignment(Alignment::Center);
-    frame.render_widget(detail, rows[3]);
-
-    let waiting = Paragraph::new(Line::from(Span::styled(
-        "Waiting...",
-        Style::default().fg(app.theme.text_dim),
-    )))
-    .alignment(Alignment::Center);
-    frame.render_widget(waiting, rows[5]);
+    .block(block);
+    frame.render_widget(text, content);
 }
 
 fn draw_otp_input(frame: &mut Frame, app: &App, area: Rect) {
@@ -131,7 +149,7 @@ fn draw_otp_input(frame: &mut Frame, app: &App, area: Rect) {
         area,
         "Enter verification code",
         &app.otp_input.clone(),
-        "Enter to verify \u{00b7} Esc to cancel",
+        "Enter to verify · Esc to cancel",
     );
 }
 
@@ -147,120 +165,168 @@ fn draw_display_name_input(frame: &mut Frame, app: &App, area: Rect) {
 }
 
 fn draw_logged_in(frame: &mut Frame, app: &App, area: Rect, display_name: &str, elo: i32) {
-    let items = ["Find Game", "Log Out"];
-    let row_width: usize = 28;
+    let card_width: u16 = 36;
+    let card_height: u16 = 4;
+    let gap: u16 = 1;
+    let profile_height: u16 = 3; // profile line + spacer
+    let total_height = profile_height + 2 * card_height + gap;
+    let content = center_block(area, card_width, total_height);
 
-    let content = center_block(area, row_width as u16 + 4, items.len() as u16 + 5);
-    let rows = Layout::vertical([
-        Constraint::Length(1), // spacer
-        Constraint::Length(1), // name + elo
-        Constraint::Length(1), // spacer
-        Constraint::Length(1), // Find Game
-        Constraint::Length(1), // Log Out
-        Constraint::Length(1), // spacer
-    ])
-    .split(content);
-
+    // Profile line — centered, name bright, ELO in accent
+    let profile_rect = Rect::new(content.x, content.y, card_width, 1);
     let profile = Paragraph::new(Line::from(vec![
+        Span::styled("♚ ", Style::default().fg(app.theme.accent)),
         Span::styled(
             display_name,
             Style::default()
                 .fg(app.theme.text_bright)
                 .add_modifier(Modifier::BOLD),
         ),
+        Span::styled("  │  ", Style::default().fg(ratatui::style::Color::Indexed(238))),
+        Span::styled("ELO: ", Style::default().fg(app.theme.text_dim)),
         Span::styled(
-            format!("  \u{2502}  ELO: {}", elo),
-            Style::default().fg(app.theme.text_dim),
+            format!("{}", elo),
+            Style::default().fg(app.theme.accent_secondary),
         ),
-    ]))
-    .alignment(Alignment::Center);
-    frame.render_widget(profile, rows[1]);
+    ]));
+    frame.render_widget(profile, profile_rect);
 
-    for (i, item) in items.iter().enumerate() {
-        let selected = i == app.multiplayer_selection;
-        let style = if selected {
-            Style::default()
-                .fg(app.theme.table_cursor_fg)
-                .bg(app.theme.table_cursor_bg)
-                .add_modifier(Modifier::BOLD)
-        } else {
-            Style::default().fg(app.theme.text_primary)
-        };
-        let prefix = if selected { "  \u{25b8} " } else { "    " };
-        let text = format!("{}{}", prefix, item);
-        let padded = format!("{:<width$}", text, width = row_width);
-        let line = Paragraph::new(Line::from(Span::styled(padded, style)))
-            .alignment(Alignment::Center);
-        frame.render_widget(line, rows[3 + i]);
+    // CardButton items
+    let items: &[(&str, &str, &str)] = &[
+        ("⚔", "Find Game", "Match with an opponent"),
+        ("×", "Log Out", "Return to guest mode"),
+    ];
+    for (i, (icon, title, sub)) in items.iter().enumerate() {
+        let y = content.y + profile_height + i as u16 * (card_height + gap);
+        let card_area = Rect::new(content.x, y, card_width, card_height);
+        let card = CardButton::new(icon, title, sub, &app.theme)
+            .selected(i == app.multiplayer_selection);
+        frame.render_widget(card, card_area);
     }
 }
 
 fn draw_searching(frame: &mut Frame, app: &App, area: Rect) {
-    let content = center_block(area, 36, 5);
-    let rows = Layout::vertical([
-        Constraint::Length(1), // spacer
-        Constraint::Length(1), // title
-        Constraint::Length(1), // spacer
-        Constraint::Length(1), // hint
-        Constraint::Length(1), // spacer
+    let content = center_block(area, 36, 7);
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(app.theme.text_dim))
+        .title(Span::styled(
+            " Matchmaking ",
+            Style::default()
+                .fg(app.theme.accent)
+                .add_modifier(Modifier::BOLD),
+        ));
+
+    let spinner = SPINNER[(app.tick as usize) % SPINNER.len()];
+    let dots = ".".repeat((app.tick as usize / 5) % 4);
+    let text = Paragraph::new(vec![
+        Line::from(""),
+        Line::from(vec![
+            Span::styled(
+                format!("  {} ", spinner),
+                Style::default().fg(app.theme.accent_secondary),
+            ),
+            Span::styled(
+                format!("Looking for opponent{}", dots),
+                Style::default().fg(app.theme.text_bright),
+            ),
+        ]),
+        Line::from(""),
+        Line::from(Span::styled(
+            "  Esc to cancel",
+            Style::default()
+                .fg(app.theme.text_dim)
+                .add_modifier(Modifier::ITALIC),
+        )),
+        Line::from(""),
     ])
-    .split(content);
-
-    let msg = Paragraph::new(Line::from(Span::styled(
-        "Looking for opponent...",
-        Style::default()
-            .fg(app.theme.accent)
-            .add_modifier(Modifier::BOLD),
-    )))
-    .alignment(Alignment::Center);
-    frame.render_widget(msg, rows[1]);
-
-    let hint = Paragraph::new(Line::from(Span::styled(
-        "Esc to cancel",
-        Style::default().fg(app.theme.text_dim),
-    )))
-    .alignment(Alignment::Center);
-    frame.render_widget(hint, rows[3]);
+    .block(block);
+    frame.render_widget(text, content);
 }
 
 fn draw_text_input(frame: &mut Frame, app: &App, area: Rect, label: &str, value: &str, hint: &str) {
-    let content = center_block(area, 40, 7);
-    let rows = Layout::vertical([
-        Constraint::Length(1), // spacer
-        Constraint::Length(1), // label
-        Constraint::Length(1), // spacer
-        Constraint::Length(1), // input
-        Constraint::Length(1), // spacer
-        Constraint::Length(1), // hint
-    ])
-    .split(content);
-
-    let label_line = Paragraph::new(Line::from(Span::styled(
-        label,
-        Style::default()
-            .fg(app.theme.accent)
-            .add_modifier(Modifier::BOLD),
-    )))
-    .alignment(Alignment::Center);
-    frame.render_widget(label_line, rows[1]);
+    let has_error = !app.status_message.is_empty();
+    let height = if has_error { 11 } else { 9 };
+    let content = center_block(area, 44, height);
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(app.theme.text_dim))
+        .title(Span::styled(
+            format!(" {} ", label),
+            Style::default()
+                .fg(app.theme.accent)
+                .add_modifier(Modifier::BOLD),
+        ));
 
     // Input field with cursor
-    let display = format!("  {}\u{258f}  ", value);
-    let input_line = Paragraph::new(Line::from(Span::styled(
-        display,
-        Style::default()
-            .fg(app.theme.text_bright)
-            .bg(app.theme.dark_square),
-    )))
-    .alignment(Alignment::Center);
-    frame.render_widget(input_line, rows[3]);
+    let display = format!("  {}▏", value);
+    let input_padded = format!("{:<40}", display);
 
-    let hint_line = Paragraph::new(Line::from(Span::styled(
-        hint,
-        Style::default().fg(app.theme.text_dim),
-    )))
-    .alignment(Alignment::Center);
-    frame.render_widget(hint_line, rows[5]);
+    let mut lines = vec![
+        Line::from(""),
+        Line::from(Span::styled(
+            format!("  {}", input_padded),
+            Style::default()
+                .fg(app.theme.text_bright),
+        )),
+        Line::from(""),
+        Line::from(Span::styled(
+            format!("  {}", hint),
+            Style::default()
+                .fg(app.theme.text_dim)
+                .add_modifier(Modifier::ITALIC),
+        )),
+    ];
+
+    if has_error {
+        lines.push(Line::from(""));
+        lines.push(Line::from(Span::styled(
+            format!("  {}", app.status_message),
+            Style::default().fg(ratatui::style::Color::Rgb(224, 108, 117)),
+        )));
+    }
+    lines.push(Line::from(""));
+
+    let text = Paragraph::new(lines).block(block);
+    frame.render_widget(text, content);
+}
+
+fn draw_password_input(frame: &mut Frame, app: &App, area: Rect, label: &str, hint: &str) {
+    let content = center_block(area, 44, 9);
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(app.theme.text_dim))
+        .title(Span::styled(
+            format!(" {} ", label),
+            Style::default()
+                .fg(app.theme.accent)
+                .add_modifier(Modifier::BOLD),
+        ));
+
+    let masked: String = "•".repeat(app.password_input.len());
+    let display = format!("  {}▏", masked);
+    let input_padded = format!("{:<40}", display);
+
+    let text = Paragraph::new(vec![
+        Line::from(""),
+        Line::from(Span::styled(
+            format!("  {}", input_padded),
+            Style::default().fg(app.theme.text_bright),
+        )),
+        Line::from(""),
+        Line::from(Span::styled(
+            format!("  {}", hint),
+            Style::default()
+                .fg(app.theme.text_dim)
+                .add_modifier(Modifier::ITALIC),
+        )),
+        Line::from(""),
+    ])
+    .block(block);
+    frame.render_widget(text, content);
 }
 
 fn center_block(area: Rect, width: u16, height: u16) -> Rect {

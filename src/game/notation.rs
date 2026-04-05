@@ -59,6 +59,157 @@ pub fn parse_square(s: &str) -> Option<Square> {
     s.parse::<Square>().ok()
 }
 
+/// Parse a SAN string (e.g. "e4", "Nf3", "O-O") and find the matching legal move.
+pub fn parse_san(board: &Board, san: &str) -> Option<Move> {
+    let san = san.trim_end_matches('+').trim_end_matches('#');
+
+    // Castling
+    if san == "O-O" || san == "O-O-O" {
+        let mut found = None;
+        board.generate_moves(|list| {
+            for mv in list {
+                if board.pieces(Piece::King).has(mv.from) {
+                    let color = board.side_to_move();
+                    let friendly = board.colors(color);
+                    if friendly.has(mv.to) && board.pieces(Piece::Rook).has(mv.to) {
+                        let is_kingside = mv.to.file() > mv.from.file();
+                        if (san == "O-O" && is_kingside) || (san == "O-O-O" && !is_kingside) {
+                            found = Some(mv);
+                        }
+                    }
+                }
+            }
+            false
+        });
+        return found;
+    }
+
+    let chars: Vec<char> = san.chars().collect();
+    if chars.is_empty() {
+        return None;
+    }
+
+    let is_piece = |c: char| matches!(c, 'N' | 'B' | 'R' | 'Q' | 'K');
+    let is_file = |c: char| matches!(c, 'a'..='h');
+    let is_rank = |c: char| matches!(c, '1'..='8');
+
+    let piece: Piece;
+    let mut disambig_file: Option<File> = None;
+    let mut disambig_rank: Option<Rank> = None;
+    let dest_file: File;
+    let dest_rank: Rank;
+    let mut promotion: Option<Piece> = None;
+
+    let parse_file = |c: char| -> File {
+        File::index((c as u8 - b'a') as usize)
+    };
+    let parse_rank = |c: char| -> Rank {
+        Rank::index((c as u8 - b'1') as usize)
+    };
+    let parse_piece = |c: char| -> Piece {
+        match c {
+            'N' => Piece::Knight,
+            'B' => Piece::Bishop,
+            'R' => Piece::Rook,
+            'Q' => Piece::Queen,
+            'K' => Piece::King,
+            _ => unreachable!(),
+        }
+    };
+
+    // Strip capture markers
+    let clean: String = san.chars().filter(|&c| c != 'x').collect();
+    let chars: Vec<char> = clean.chars().collect();
+
+    if is_piece(chars[0]) {
+        // Piece move: N/B/R/Q/K [disambig] dest [=promo]
+        piece = parse_piece(chars[0]);
+        let rest = &chars[1..];
+        // Find dest square (last two chars before optional =Promo)
+        let (coords, promo_part) = if rest.len() >= 3 && rest[rest.len() - 2] == '=' {
+            (&rest[..rest.len() - 2], Some(rest[rest.len() - 1]))
+        } else {
+            (rest, None)
+        };
+        if coords.len() < 2 {
+            return None;
+        }
+        dest_file = parse_file(coords[coords.len() - 2]);
+        dest_rank = parse_rank(coords[coords.len() - 1]);
+        // Disambiguation
+        let disambig = &coords[..coords.len() - 2];
+        for &c in disambig {
+            if is_file(c) {
+                disambig_file = Some(parse_file(c));
+            } else if is_rank(c) {
+                disambig_rank = Some(parse_rank(c));
+            }
+        }
+        if let Some(p) = promo_part {
+            if is_piece(p) {
+                promotion = Some(parse_piece(p));
+            }
+        }
+    } else if is_file(chars[0]) {
+        // Pawn move: file rank [=Promo] or file x file rank [=Promo]
+        piece = Piece::Pawn;
+        let (coords, promo_part) = if chars.len() >= 4 && chars[chars.len() - 2] == '=' {
+            (&chars[..chars.len() - 2], Some(chars[chars.len() - 1]))
+        } else {
+            (&chars[..], None)
+        };
+        if coords.len() == 2 {
+            dest_file = parse_file(coords[0]);
+            dest_rank = parse_rank(coords[1]);
+        } else if coords.len() == 3 {
+            // e.g. "ef4" — file disambig + dest
+            disambig_file = Some(parse_file(coords[0]));
+            dest_file = parse_file(coords[1]);
+            dest_rank = parse_rank(coords[2]);
+        } else {
+            return None;
+        }
+        if let Some(p) = promo_part {
+            if is_piece(p) {
+                promotion = Some(parse_piece(p));
+            }
+        }
+    } else {
+        return None;
+    }
+
+    let dest = Square::new(dest_file, dest_rank);
+
+    // Find matching legal move
+    let mut found = None;
+    board.generate_moves(|list| {
+        for mv in list {
+            if mv.to != dest {
+                continue;
+            }
+            if !board.pieces(piece).has(mv.from) {
+                continue;
+            }
+            if let Some(df) = disambig_file {
+                if mv.from.file() != df {
+                    continue;
+                }
+            }
+            if let Some(dr) = disambig_rank {
+                if mv.from.rank() != dr {
+                    continue;
+                }
+            }
+            if mv.promotion != promotion {
+                continue;
+            }
+            found = Some(mv);
+        }
+        false
+    });
+    found
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Private helpers
 // ──────────────────────────────────────────────────────────────────────────────

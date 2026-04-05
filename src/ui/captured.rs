@@ -1,9 +1,9 @@
 use cozy_chess::{Color as ChessColor, Piece};
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
-use ratatui::style::Style;
+use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, Paragraph, Widget};
+use ratatui::widgets::{Paragraph, Widget};
 
 use crate::app::App;
 use crate::theme::Theme;
@@ -19,7 +19,7 @@ impl<'a> CapturedWidget<'a> {
     }
 }
 
-fn piece_unicode(piece: Piece, color: ChessColor) -> &'static str {
+fn piece_symbol(piece: Piece, color: ChessColor) -> &'static str {
     match (color, piece) {
         (ChessColor::White, Piece::Pawn)   => "\u{2659}",
         (ChessColor::White, Piece::Knight) => "\u{2658}",
@@ -48,19 +48,34 @@ fn piece_value(piece: Piece) -> i32 {
 
 impl Widget for CapturedWidget<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let block = Block::default()
-            .title(" Captured ")
-            .borders(Borders::ALL)
-            .border_style(Style::default().fg(self.theme.border_dim));
-
-        let inner = block.inner(area);
-        block.render(area, buf);
-
-        if inner.width == 0 || inner.height == 0 {
+        if area.width < 4 || area.height < 3 {
             return;
         }
 
-        // White's captures (black pieces taken)
+        // ── Header: ⚔ Captured ──────── ──
+        let deco_len = area.width.saturating_sub(13) as usize;
+        let deco = "\u{2500}".repeat(deco_len);
+        let header = Line::from(vec![
+            Span::styled(
+                " \u{2694} ",
+                Style::default().fg(self.theme.icon_color),
+            ),
+            Span::styled(
+                "Captured ",
+                Style::default()
+                    .fg(self.theme.accent_secondary)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(deco, Style::default().fg(Color::Indexed(238))),
+        ]);
+        Paragraph::new(header).render(Rect::new(area.x, area.y, area.width, 1), buf);
+
+        // Content after header + spacer
+        let content_y = area.y + 2;
+        if area.height < 4 {
+            return;
+        }
+
         let white_caps = self.app.captured_by_white();
         let black_caps = self.app.captured_by_black();
 
@@ -68,47 +83,48 @@ impl Widget for CapturedWidget<'_> {
         let black_material: i32 = black_caps.iter().map(|c| piece_value(c.piece)).sum();
         let diff = white_material - black_material;
 
-        let mut lines: Vec<Line> = Vec::new();
-
         // White's captures line
         let mut white_spans: Vec<Span> = vec![Span::styled(
-            "W: ",
+            " W: ",
             Style::default().fg(self.theme.text_dim),
         )];
         for cap in white_caps {
             white_spans.push(Span::styled(
-                piece_unicode(cap.piece, cap.color),
-                Style::default().fg(self.theme.text_primary),
+                piece_symbol(cap.piece, cap.color),
+                Style::default().fg(self.theme.white_piece),
             ));
         }
         if diff > 0 {
             white_spans.push(Span::styled(
                 format!(" +{}", diff),
-                Style::default().fg(self.theme.accent),
+                Style::default()
+                    .fg(self.theme.accent)
+                    .add_modifier(Modifier::BOLD),
             ));
         }
-        lines.push(Line::from(white_spans));
 
         // Black's captures line
         let mut black_spans: Vec<Span> = vec![Span::styled(
-            "B: ",
+            " B: ",
             Style::default().fg(self.theme.text_dim),
         )];
         for cap in black_caps {
             black_spans.push(Span::styled(
-                piece_unicode(cap.piece, cap.color),
-                Style::default().fg(self.theme.text_primary),
+                piece_symbol(cap.piece, cap.color),
+                Style::default().fg(self.theme.black_piece),
             ));
         }
         if diff < 0 {
             black_spans.push(Span::styled(
                 format!(" +{}", -diff),
-                Style::default().fg(self.theme.accent),
+                Style::default()
+                    .fg(self.theme.accent)
+                    .add_modifier(Modifier::BOLD),
             ));
         }
-        lines.push(Line::from(black_spans));
 
-        let paragraph = Paragraph::new(lines);
-        paragraph.render(inner, buf);
+        let lines = vec![Line::from(white_spans), Line::from(black_spans)];
+        let content_area = Rect::new(area.x, content_y, area.width, 2);
+        Paragraph::new(lines).render(content_area, buf);
     }
 }

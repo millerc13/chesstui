@@ -15,6 +15,12 @@ pub struct SavedGame {
     pub mode: String,
     pub moves: Vec<String>,
     pub move_count: usize,
+    #[serde(default)]
+    pub white_player: Option<String>,
+    #[serde(default)]
+    pub black_player: Option<String>,
+    #[serde(default)]
+    pub server_game_id: Option<String>,
 }
 
 /// Returns the path to ~/.chesstui/replays/, creating it if necessary.
@@ -69,6 +75,17 @@ pub fn save_game(game: &GameState, mode: &GameMode, result: &GameResult) -> Opti
         .map(|record| to_algebraic(&record.previous_board, &record.mv))
         .collect();
 
+    let (white_player, black_player, server_game_id) = match mode {
+        GameMode::Online { game_id, my_color, opponent_name } => {
+            let (wp, bp) = match my_color {
+                cozy_chess::Color::White => (Some("You".to_string()), Some(opponent_name.clone())),
+                cozy_chess::Color::Black => (Some(opponent_name.clone()), Some("You".to_string())),
+            };
+            (wp, bp, Some(game_id.clone()))
+        }
+        _ => (None, None, None),
+    };
+
     let saved = SavedGame {
         id: id.clone(),
         date,
@@ -77,6 +94,9 @@ pub fn save_game(game: &GameState, mode: &GameMode, result: &GameResult) -> Opti
         mode: mode_str,
         move_count: moves.len(),
         moves,
+        white_player,
+        black_player,
+        server_game_id,
     };
 
     let json = serde_json::to_string_pretty(&saved).ok()?;

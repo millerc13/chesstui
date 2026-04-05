@@ -16,6 +16,7 @@ pub struct AppState {
     pub matchmaker: Arc<Mutex<matchmaking::Matchmaker>>,
     pub games: Arc<DashMap<String, Arc<Mutex<game_room::GameRoom>>>>,
     pub otp_rate_limits: Arc<Mutex<HashMap<String, Instant>>>,
+    pub connected_users: Arc<DashMap<uuid::Uuid, ()>>,
 }
 
 pub async fn run(
@@ -31,12 +32,37 @@ pub async fn run(
         .init();
 
     tracing::info!("Connecting to database...");
-    let pool = sqlx::PgPool::connect(&database_url).await?;
+    use sqlx::postgres::{PgConnectOptions, PgSslMode};
+    use std::str::FromStr;
+    let opts = PgConnectOptions::from_str(&database_url)?
+        .ssl_mode(PgSslMode::Require)
+        .options([("search_path", "public")]);
+    let pool = sqlx::PgPool::connect_with(opts).await?;
 
-    // Run migrations by reading and executing the SQL file
+    // Run migrations — execute each statement individually
     tracing::info!("Running migrations...");
-    let migration_sql = tokio::fs::read_to_string("./migrations/001_initial.sql").await?;
-    sqlx::query(&migration_sql).execute(&pool).await.ok(); // OK if tables already exist
+    for path in &["./migrations/001_initial.sql", "./migrations/002_accounts.sql"] {
+        match tokio::fs::read_to_string(path).await {
+            Ok(sql) => {
+                for statement in sql.split(';') {
+                    let stmt = statement.trim();
+                    if stmt.is_empty() || stmt.starts_with("--") {
+                        continue;
+                    }
+                    if let Err(e) = sqlx::query(stmt).execute(&pool).await {
+                        // Ignore "already exists" errors
+                        let msg = e.to_string();
+                        if !msg.contains("already exists") && !msg.contains("duplicate") {
+                            tracing::warn!("Migration statement error: {}", msg);
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                tracing::warn!("Could not read migration {}: {} (tables may already exist)", path, e);
+            }
+        }
+    }
 
     let state = Arc::new(AppState {
         pool,
@@ -44,6 +70,7 @@ pub async fn run(
         matchmaker: Arc::new(Mutex::new(matchmaking::Matchmaker::new())),
         games: Arc::new(DashMap::new()),
         otp_rate_limits: Arc::new(Mutex::new(HashMap::new())),
+        connected_users: Arc::new(DashMap::new()),
     });
 
     let app = axum::Router::new()

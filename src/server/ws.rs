@@ -8,7 +8,7 @@ use futures_util::{SinkExt, StreamExt};
 use tokio::sync::{mpsc, Mutex};
 use uuid::Uuid;
 
-use crate::protocol::{ClientMessage, ServerMessage, UserInfo};
+use crate::protocol::{ClientMessage, FriendInfo, ServerMessage, UserInfo};
 
 use super::game_room::GameRoom;
 use super::matchmaking::{MatchResult, WaitingPlayer};
@@ -124,11 +124,21 @@ async fn handle_connection(socket: WebSocket, state: Arc<AppState>) {
                                 }
 
                                 let user_info = user_to_info(&user);
+                                let has_password = user.password_hash.is_some();
+                                let preferences = user.preferences.clone();
                                 authenticated_user = Some(user);
 
                                 send_msg(&out_tx, ServerMessage::Authenticated {
                                     token,
                                     user: user_info,
+                                }).await;
+
+                                if !has_password {
+                                    send_msg(&out_tx, ServerMessage::NeedPassword).await;
+                                }
+
+                                send_msg(&out_tx, ServerMessage::PreferencesLoaded {
+                                    preferences,
                                 }).await;
 
                                 if authenticated_user.as_ref().unwrap().display_name.is_none() {
@@ -158,15 +168,79 @@ async fn handle_connection(socket: WebSocket, state: Arc<AppState>) {
                     }
                 }
             }
+            ClientMessage::LoginWithPassword { email, password } => {
+                match db::get_user_for_login(&state.pool, &email).await {
+                    Ok(Some(user)) => {
+                        if let Some(ref hash) = user.password_hash {
+                            if auth::verify_password(hash, &password) {
+                                let token = auth::generate_session_token();
+                                let expires_at = chrono::Utc::now() + chrono::Duration::days(30);
+                                if let Err(e) = db::create_session(
+                                    &state.pool, user.id, &token, expires_at,
+                                ).await {
+                                    tracing::error!("Failed to create session: {}", e);
+                                    send_msg(&out_tx, ServerMessage::AuthError {
+                                        reason: "Internal error".to_string(),
+                                    }).await;
+                                    continue;
+                                }
+
+                                let user_info = user_to_info(&user);
+                                let preferences = user.preferences.clone();
+                                authenticated_user = Some(user);
+
+                                send_msg(&out_tx, ServerMessage::Authenticated {
+                                    token,
+                                    user: user_info,
+                                }).await;
+
+                                send_msg(&out_tx, ServerMessage::PreferencesLoaded {
+                                    preferences,
+                                }).await;
+
+                                if authenticated_user.as_ref().unwrap().display_name.is_none() {
+                                    send_msg(&out_tx, ServerMessage::NeedDisplayName).await;
+                                }
+
+                                break; // Exit auth loop
+                            } else {
+                                send_msg(&out_tx, ServerMessage::AuthError {
+                                    reason: "Invalid password".to_string(),
+                                }).await;
+                            }
+                        } else {
+                            send_msg(&out_tx, ServerMessage::AuthError {
+                                reason: "No password set for this account".to_string(),
+                            }).await;
+                        }
+                    }
+                    Ok(None) => {
+                        send_msg(&out_tx, ServerMessage::AuthError {
+                            reason: "User not found".to_string(),
+                        }).await;
+                    }
+                    Err(e) => {
+                        tracing::error!("Login error: {}", e);
+                        send_msg(&out_tx, ServerMessage::AuthError {
+                            reason: "Internal error".to_string(),
+                        }).await;
+                    }
+                }
+            }
             ClientMessage::ResumeSession { token } => {
                 match db::validate_session(&state.pool, &token).await {
                     Ok(Some(user)) => {
                         let user_info = user_to_info(&user);
+                        let preferences = user.preferences.clone();
                         authenticated_user = Some(user);
 
                         send_msg(&out_tx, ServerMessage::Authenticated {
                             token,
                             user: user_info,
+                        }).await;
+
+                        send_msg(&out_tx, ServerMessage::PreferencesLoaded {
+                            preferences,
                         }).await;
 
                         if authenticated_user.as_ref().unwrap().display_name.is_none() {
@@ -206,6 +280,7 @@ async fn handle_connection(socket: WebSocket, state: Arc<AppState>) {
     };
 
     let user_id = user.id;
+    state.connected_users.insert(user_id, ());
     let current_game_id: Option<String> = None;
 
     // Main message loop (authenticated)
@@ -474,6 +549,132 @@ async fn handle_connection(socket: WebSocket, state: Arc<AppState>) {
                     room.draw_offered_by = None;
                 }
             }
+            ClientMessage::SetPassword { password } => {
+                match auth::hash_password(&password) {
+                    Ok(hash) => {
+                        if let Err(e) = db::set_password(&state.pool, user_id, &hash).await {
+                            tracing::error!("Failed to set password: {}", e);
+                            send_msg(&out_tx, ServerMessage::Error {
+                                message: "Failed to set password".to_string(),
+                            }).await;
+                        } else {
+                            send_msg(&out_tx, ServerMessage::PasswordSet).await;
+                        }
+                    }
+                    Err(e) => {
+                        tracing::error!("Failed to hash password: {}", e);
+                        send_msg(&out_tx, ServerMessage::Error {
+                            message: "Failed to set password".to_string(),
+                        }).await;
+                    }
+                }
+            }
+            ClientMessage::GetPreferences => {
+                match db::get_preferences(&state.pool, user_id).await {
+                    Ok(preferences) => {
+                        send_msg(&out_tx, ServerMessage::PreferencesLoaded { preferences }).await;
+                    }
+                    Err(e) => {
+                        tracing::error!("Failed to get preferences: {}", e);
+                        send_msg(&out_tx, ServerMessage::Error {
+                            message: "Failed to load preferences".to_string(),
+                        }).await;
+                    }
+                }
+            }
+            ClientMessage::UpdatePreferences { preferences } => {
+                match db::update_preferences(&state.pool, user_id, &preferences).await {
+                    Ok(()) => {
+                        send_msg(&out_tx, ServerMessage::PreferencesUpdated).await;
+                    }
+                    Err(e) => {
+                        tracing::error!("Failed to update preferences: {}", e);
+                        send_msg(&out_tx, ServerMessage::Error {
+                            message: "Failed to update preferences".to_string(),
+                        }).await;
+                    }
+                }
+            }
+            ClientMessage::AddFriend { email } => {
+                match db::find_user_by_email(&state.pool, &email).await {
+                    Ok(Some(friend_user)) => {
+                        if friend_user.id == user_id {
+                            send_msg(&out_tx, ServerMessage::Error {
+                                message: "Cannot add yourself as a friend".to_string(),
+                            }).await;
+                            continue;
+                        }
+                        if let Err(e) = db::add_friend(&state.pool, user_id, friend_user.id).await {
+                            tracing::error!("Failed to add friend: {}", e);
+                            send_msg(&out_tx, ServerMessage::Error {
+                                message: "Failed to add friend".to_string(),
+                            }).await;
+                        } else {
+                            let online = state.connected_users.contains_key(&friend_user.id);
+                            send_msg(&out_tx, ServerMessage::FriendAdded {
+                                friend: FriendInfo {
+                                    id: friend_user.id.to_string(),
+                                    display_name: friend_user.display_name.unwrap_or_else(|| "Anonymous".to_string()),
+                                    elo: friend_user.elo,
+                                    online,
+                                },
+                            }).await;
+                        }
+                    }
+                    Ok(None) => {
+                        send_msg(&out_tx, ServerMessage::Error {
+                            message: "User not found".to_string(),
+                        }).await;
+                    }
+                    Err(e) => {
+                        tracing::error!("Failed to look up friend: {}", e);
+                        send_msg(&out_tx, ServerMessage::Error {
+                            message: "Failed to add friend".to_string(),
+                        }).await;
+                    }
+                }
+            }
+            ClientMessage::RemoveFriend { friend_id } => {
+                match Uuid::parse_str(&friend_id) {
+                    Ok(fid) => {
+                        if let Err(e) = db::remove_friend(&state.pool, user_id, fid).await {
+                            tracing::error!("Failed to remove friend: {}", e);
+                            send_msg(&out_tx, ServerMessage::Error {
+                                message: "Failed to remove friend".to_string(),
+                            }).await;
+                        } else {
+                            send_msg(&out_tx, ServerMessage::FriendRemoved { friend_id }).await;
+                        }
+                    }
+                    Err(_) => {
+                        send_msg(&out_tx, ServerMessage::Error {
+                            message: "Invalid friend ID".to_string(),
+                        }).await;
+                    }
+                }
+            }
+            ClientMessage::ListFriends => {
+                match db::list_friends(&state.pool, user_id).await {
+                    Ok(friends) => {
+                        let friend_infos: Vec<FriendInfo> = friends.into_iter().map(|f| {
+                            let online = state.connected_users.contains_key(&f.id);
+                            FriendInfo {
+                                id: f.id.to_string(),
+                                display_name: f.display_name.unwrap_or_else(|| "Anonymous".to_string()),
+                                elo: f.elo,
+                                online,
+                            }
+                        }).collect();
+                        send_msg(&out_tx, ServerMessage::FriendsList { friends: friend_infos }).await;
+                    }
+                    Err(e) => {
+                        tracing::error!("Failed to list friends: {}", e);
+                        send_msg(&out_tx, ServerMessage::Error {
+                            message: "Failed to list friends".to_string(),
+                        }).await;
+                    }
+                }
+            }
             _ => {
                 // Ignore auth messages in game loop
             }
@@ -481,6 +682,7 @@ async fn handle_connection(socket: WebSocket, state: Arc<AppState>) {
     }
 
     // Clean up on disconnect
+    state.connected_users.remove(&user_id);
     {
         let mut mm = state.matchmaker.lock().await;
         mm.remove(&user_id);
