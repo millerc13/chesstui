@@ -365,7 +365,8 @@ impl App {
             password_input: String::new(),
             has_account: false,
             tick: 0,
-            use_kitty: true,
+            use_kitty: std::env::var("TERM").map_or(false, |t| t.contains("kitty") || t.contains("xterm-kitty"))
+                || std::env::var("TERM_PROGRAM").map_or(false, |t| t == "WezTerm"),
             board_picker: ratatui_image::picker::Picker::from_query_stdio().ok(),
             board_image_dirty: true,
             cached_board_sq_px: 0,
