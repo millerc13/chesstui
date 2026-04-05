@@ -4,9 +4,9 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 use ratatui::Frame;
 
-use crate::app::App;
-use super::ascii3d::{Piece3D, render_to_lines};
+use super::ascii3d::{render_to_lines, Piece3D};
 use super::widgets::CardButton;
+use crate::app::App;
 
 const LOGO: &[&str] = &[
     r"  ██████╗██╗  ██╗███████╗███████╗███████╗████████╗██╗   ██╗██╗",
@@ -41,10 +41,7 @@ pub fn draw_launch(frame: &mut Frame, app: &mut App) {
                 tick,
                 theme,
             );
-            frame.render_widget(
-                Paragraph::new(lines).alignment(Alignment::Center),
-                cols[0],
-            );
+            frame.render_widget(Paragraph::new(lines).alignment(Alignment::Center), cols[0]);
         }
 
         // Right piece — Queen
@@ -56,10 +53,7 @@ pub fn draw_launch(frame: &mut Frame, app: &mut App) {
                 tick,
                 theme,
             );
-            frame.render_widget(
-                Paragraph::new(lines).alignment(Alignment::Center),
-                cols[2],
-            );
+            frame.render_widget(Paragraph::new(lines).alignment(Alignment::Center), cols[2]);
         }
 
         cols[1]
@@ -69,19 +63,19 @@ pub fn draw_launch(frame: &mut Frame, app: &mut App) {
 
     // Center content layout
     let rows = Layout::vertical([
-        Constraint::Length(2),                     // top padding
-        Constraint::Length(LOGO.len() as u16),     // big CHESSTUI logo
-        Constraint::Length(1),                     // subtitle
-        Constraint::Length(2),                     // spacer
-        Constraint::Length(4),                     // button 1: Sign Up
-        Constraint::Length(1),                     // gap
-        Constraint::Length(4),                     // button 2: Log In
-        Constraint::Length(1),                     // gap
-        Constraint::Length(4),                     // button 3: Play as Guest
-        Constraint::Length(2),                     // spacer
-        Constraint::Length(1),                     // hint line
-        Constraint::Min(1),                        // flex
-        Constraint::Length(1),                     // branding footer
+        Constraint::Length(2),                 // top padding
+        Constraint::Length(LOGO.len() as u16), // big CHESSTUI logo
+        Constraint::Length(1),                 // subtitle
+        Constraint::Length(2),                 // spacer
+        Constraint::Length(4),                 // button 1: Sign Up
+        Constraint::Length(1),                 // gap
+        Constraint::Length(4),                 // button 2: Log In
+        Constraint::Length(1),                 // gap
+        Constraint::Length(4),                 // button 3: Play as Guest
+        Constraint::Length(2),                 // spacer
+        Constraint::Length(1),                 // hint line
+        Constraint::Min(1),                    // flex
+        Constraint::Length(1),                 // branding footer
     ])
     .split(center);
 
@@ -116,8 +110,8 @@ pub fn draw_launch(frame: &mut Frame, app: &mut App) {
         .selected(app.launch_selection == 0);
     frame.render_widget(btn1, buttons_area(rows[4]));
 
-    let btn2 = CardButton::new("→", "Log In", "Welcome back", theme)
-        .selected(app.launch_selection == 1);
+    let btn2 =
+        CardButton::new("→", "Log In", "Welcome back", theme).selected(app.launch_selection == 1);
     frame.render_widget(btn2, buttons_area(rows[6]));
 
     let btn3 = CardButton::new("♟", "Play as Guest", "Jump right in", theme)
@@ -126,11 +120,26 @@ pub fn draw_launch(frame: &mut Frame, app: &mut App) {
 
     // Hint line
     let hint = Paragraph::new(Line::from(vec![
-        Span::styled("j/k", Style::default().fg(theme.shortcut_color).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            "j/k",
+            Style::default()
+                .fg(theme.shortcut_color)
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::styled(" navigate  ", Style::default().fg(theme.text_dim)),
-        Span::styled("Enter", Style::default().fg(theme.shortcut_color).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            "Enter",
+            Style::default()
+                .fg(theme.shortcut_color)
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::styled(" select  ", Style::default().fg(theme.text_dim)),
-        Span::styled("q", Style::default().fg(theme.shortcut_color).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            "q",
+            Style::default()
+                .fg(theme.shortcut_color)
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::styled(" quit", Style::default().fg(theme.text_dim)),
     ]))
     .alignment(Alignment::Center);
@@ -139,7 +148,10 @@ pub fn draw_launch(frame: &mut Frame, app: &mut App) {
     // Branding footer
     let footer = Paragraph::new(Line::from(vec![
         Span::styled("built by ", Style::default().fg(theme.text_dim)),
-        Span::styled("resurgence.cloud", Style::default().fg(theme.accent_secondary)),
+        Span::styled(
+            "resurgence.cloud",
+            Style::default().fg(theme.accent_secondary),
+        ),
     ]))
     .alignment(Alignment::Center);
     frame.render_widget(footer, rows[12]);

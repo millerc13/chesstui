@@ -4,8 +4,13 @@ const DEPTH: u8 = 3;
 
 pub fn choose_move(board: &Board) -> Option<Move> {
     let mut legal = Vec::new();
-    board.generate_moves(|mvs| { legal.extend(mvs); false });
-    if legal.is_empty() { return None; }
+    board.generate_moves(|mvs| {
+        legal.extend(mvs);
+        false
+    });
+    if legal.is_empty() {
+        return None;
+    }
 
     let maximizing = board.side_to_move() == Color::White;
     let mut best_move = legal[0];
@@ -30,12 +35,19 @@ fn minimax(board: &Board, depth: u8, mut alpha: i32, mut beta: i32, maximizing: 
     }
 
     let mut legal = Vec::new();
-    board.generate_moves(|mvs| { legal.extend(mvs); false });
+    board.generate_moves(|mvs| {
+        legal.extend(mvs);
+        false
+    });
 
     if legal.is_empty() {
         return if !board.checkers().is_empty() {
             // Checkmate
-            if maximizing { -100_000 } else { 100_000 }
+            if maximizing {
+                -100_000
+            } else {
+                100_000
+            }
         } else {
             0 // Stalemate
         };
@@ -49,7 +61,9 @@ fn minimax(board: &Board, depth: u8, mut alpha: i32, mut beta: i32, maximizing: 
             let score = minimax(&next, depth - 1, alpha, beta, false);
             best = best.max(score);
             alpha = alpha.max(score);
-            if beta <= alpha { break; }
+            if beta <= alpha {
+                break;
+            }
         }
         best
     } else {
@@ -60,7 +74,9 @@ fn minimax(board: &Board, depth: u8, mut alpha: i32, mut beta: i32, maximizing: 
             let score = minimax(&next, depth - 1, alpha, beta, true);
             best = best.min(score);
             beta = beta.min(score);
-            if beta <= alpha { break; }
+            if beta <= alpha {
+                break;
+            }
         }
         best
     }
@@ -69,7 +85,13 @@ fn minimax(board: &Board, depth: u8, mut alpha: i32, mut beta: i32, maximizing: 
 fn evaluate(board: &Board) -> i32 {
     let mut score: i32 = 0;
 
-    for piece in [Piece::Pawn, Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen] {
+    for piece in [
+        Piece::Pawn,
+        Piece::Knight,
+        Piece::Bishop,
+        Piece::Rook,
+        Piece::Queen,
+    ] {
         let val = piece_value(piece);
         let white = (board.pieces(piece) & board.colors(Color::White)).len() as i32;
         let black = (board.pieces(piece) & board.colors(Color::Black)).len() as i32;

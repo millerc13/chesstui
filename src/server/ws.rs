@@ -22,10 +22,7 @@ pub async fn ws_handler(
     ws.on_upgrade(|socket| handle_connection(socket, state))
 }
 
-async fn send_msg(
-    tx: &mpsc::Sender<ServerMessage>,
-    msg: ServerMessage,
-) {
+async fn send_msg(tx: &mpsc::Sender<ServerMessage>, msg: ServerMessage) {
     let _ = tx.send(msg).await;
 }
 
@@ -59,9 +56,13 @@ async fn handle_connection(socket: WebSocket, state: Arc<AppState>) {
         let client_msg: ClientMessage = match serde_json::from_str(&text) {
             Ok(m) => m,
             Err(_) => {
-                send_msg(&out_tx, ServerMessage::Error {
-                    message: "Invalid message format".to_string(),
-                }).await;
+                send_msg(
+                    &out_tx,
+                    ServerMessage::Error {
+                        message: "Invalid message format".to_string(),
+                    },
+                )
+                .await;
                 continue;
             }
         };
@@ -76,9 +77,14 @@ async fn handle_connection(socket: WebSocket, state: Arc<AppState>) {
                     let mut limits = state.otp_rate_limits.lock().await;
                     if let Some(last) = limits.get(&email) {
                         if last.elapsed() < Duration::from_secs(60) {
-                            send_msg(&out_tx, ServerMessage::AuthError {
-                                reason: "Please wait before requesting another code".to_string(),
-                            }).await;
+                            send_msg(
+                                &out_tx,
+                                ServerMessage::AuthError {
+                                    reason: "Please wait before requesting another code"
+                                        .to_string(),
+                                },
+                            )
+                            .await;
                             continue;
                         }
                     }
@@ -90,17 +96,25 @@ async fn handle_connection(socket: WebSocket, state: Arc<AppState>) {
 
                 if let Err(e) = db::store_otp(&state.pool, &email, &code, expires_at).await {
                     tracing::error!("Failed to store OTP: {}", e);
-                    send_msg(&out_tx, ServerMessage::AuthError {
-                        reason: "Internal error".to_string(),
-                    }).await;
+                    send_msg(
+                        &out_tx,
+                        ServerMessage::AuthError {
+                            reason: "Internal error".to_string(),
+                        },
+                    )
+                    .await;
                     continue;
                 }
 
                 if let Err(e) = auth::send_otp_email(&state.resend_api_key, &email, &code).await {
                     tracing::error!("Failed to send OTP email: {}", e);
-                    send_msg(&out_tx, ServerMessage::AuthError {
-                        reason: "Failed to send verification email".to_string(),
-                    }).await;
+                    send_msg(
+                        &out_tx,
+                        ServerMessage::AuthError {
+                            reason: "Failed to send verification email".to_string(),
+                        },
+                    )
+                    .await;
                     continue;
                 }
 
@@ -113,13 +127,18 @@ async fn handle_connection(socket: WebSocket, state: Arc<AppState>) {
                             Ok(user) => {
                                 let token = auth::generate_session_token();
                                 let expires_at = chrono::Utc::now() + chrono::Duration::days(30);
-                                if let Err(e) = db::create_session(
-                                    &state.pool, user.id, &token, expires_at,
-                                ).await {
+                                if let Err(e) =
+                                    db::create_session(&state.pool, user.id, &token, expires_at)
+                                        .await
+                                {
                                     tracing::error!("Failed to create session: {}", e);
-                                    send_msg(&out_tx, ServerMessage::AuthError {
-                                        reason: "Internal error".to_string(),
-                                    }).await;
+                                    send_msg(
+                                        &out_tx,
+                                        ServerMessage::AuthError {
+                                            reason: "Internal error".to_string(),
+                                        },
+                                    )
+                                    .await;
                                     continue;
                                 }
 
@@ -128,18 +147,21 @@ async fn handle_connection(socket: WebSocket, state: Arc<AppState>) {
                                 let preferences = user.preferences.clone();
                                 authenticated_user = Some(user);
 
-                                send_msg(&out_tx, ServerMessage::Authenticated {
-                                    token,
-                                    user: user_info,
-                                }).await;
+                                send_msg(
+                                    &out_tx,
+                                    ServerMessage::Authenticated {
+                                        token,
+                                        user: user_info,
+                                    },
+                                )
+                                .await;
 
                                 if !has_password {
                                     send_msg(&out_tx, ServerMessage::NeedPassword).await;
                                 }
 
-                                send_msg(&out_tx, ServerMessage::PreferencesLoaded {
-                                    preferences,
-                                }).await;
+                                send_msg(&out_tx, ServerMessage::PreferencesLoaded { preferences })
+                                    .await;
 
                                 if authenticated_user.as_ref().unwrap().display_name.is_none() {
                                     send_msg(&out_tx, ServerMessage::NeedDisplayName).await;
@@ -149,22 +171,34 @@ async fn handle_connection(socket: WebSocket, state: Arc<AppState>) {
                             }
                             Err(e) => {
                                 tracing::error!("Failed to find/create user: {}", e);
-                                send_msg(&out_tx, ServerMessage::AuthError {
-                                    reason: "Internal error".to_string(),
-                                }).await;
+                                send_msg(
+                                    &out_tx,
+                                    ServerMessage::AuthError {
+                                        reason: "Internal error".to_string(),
+                                    },
+                                )
+                                .await;
                             }
                         }
                     }
                     Ok(false) => {
-                        send_msg(&out_tx, ServerMessage::AuthError {
-                            reason: "Invalid or expired code".to_string(),
-                        }).await;
+                        send_msg(
+                            &out_tx,
+                            ServerMessage::AuthError {
+                                reason: "Invalid or expired code".to_string(),
+                            },
+                        )
+                        .await;
                     }
                     Err(e) => {
                         tracing::error!("OTP verification error: {}", e);
-                        send_msg(&out_tx, ServerMessage::AuthError {
-                            reason: "Internal error".to_string(),
-                        }).await;
+                        send_msg(
+                            &out_tx,
+                            ServerMessage::AuthError {
+                                reason: "Internal error".to_string(),
+                            },
+                        )
+                        .await;
                     }
                 }
             }
@@ -175,13 +209,18 @@ async fn handle_connection(socket: WebSocket, state: Arc<AppState>) {
                             if auth::verify_password(hash, &password) {
                                 let token = auth::generate_session_token();
                                 let expires_at = chrono::Utc::now() + chrono::Duration::days(30);
-                                if let Err(e) = db::create_session(
-                                    &state.pool, user.id, &token, expires_at,
-                                ).await {
+                                if let Err(e) =
+                                    db::create_session(&state.pool, user.id, &token, expires_at)
+                                        .await
+                                {
                                     tracing::error!("Failed to create session: {}", e);
-                                    send_msg(&out_tx, ServerMessage::AuthError {
-                                        reason: "Internal error".to_string(),
-                                    }).await;
+                                    send_msg(
+                                        &out_tx,
+                                        ServerMessage::AuthError {
+                                            reason: "Internal error".to_string(),
+                                        },
+                                    )
+                                    .await;
                                     continue;
                                 }
 
@@ -189,14 +228,17 @@ async fn handle_connection(socket: WebSocket, state: Arc<AppState>) {
                                 let preferences = user.preferences.clone();
                                 authenticated_user = Some(user);
 
-                                send_msg(&out_tx, ServerMessage::Authenticated {
-                                    token,
-                                    user: user_info,
-                                }).await;
+                                send_msg(
+                                    &out_tx,
+                                    ServerMessage::Authenticated {
+                                        token,
+                                        user: user_info,
+                                    },
+                                )
+                                .await;
 
-                                send_msg(&out_tx, ServerMessage::PreferencesLoaded {
-                                    preferences,
-                                }).await;
+                                send_msg(&out_tx, ServerMessage::PreferencesLoaded { preferences })
+                                    .await;
 
                                 if authenticated_user.as_ref().unwrap().display_name.is_none() {
                                     send_msg(&out_tx, ServerMessage::NeedDisplayName).await;
@@ -204,26 +246,42 @@ async fn handle_connection(socket: WebSocket, state: Arc<AppState>) {
 
                                 break; // Exit auth loop
                             } else {
-                                send_msg(&out_tx, ServerMessage::AuthError {
-                                    reason: "Invalid password".to_string(),
-                                }).await;
+                                send_msg(
+                                    &out_tx,
+                                    ServerMessage::AuthError {
+                                        reason: "Invalid password".to_string(),
+                                    },
+                                )
+                                .await;
                             }
                         } else {
-                            send_msg(&out_tx, ServerMessage::AuthError {
-                                reason: "No password set for this account".to_string(),
-                            }).await;
+                            send_msg(
+                                &out_tx,
+                                ServerMessage::AuthError {
+                                    reason: "No password set for this account".to_string(),
+                                },
+                            )
+                            .await;
                         }
                     }
                     Ok(None) => {
-                        send_msg(&out_tx, ServerMessage::AuthError {
-                            reason: "User not found".to_string(),
-                        }).await;
+                        send_msg(
+                            &out_tx,
+                            ServerMessage::AuthError {
+                                reason: "User not found".to_string(),
+                            },
+                        )
+                        .await;
                     }
                     Err(e) => {
                         tracing::error!("Login error: {}", e);
-                        send_msg(&out_tx, ServerMessage::AuthError {
-                            reason: "Internal error".to_string(),
-                        }).await;
+                        send_msg(
+                            &out_tx,
+                            ServerMessage::AuthError {
+                                reason: "Internal error".to_string(),
+                            },
+                        )
+                        .await;
                     }
                 }
             }
@@ -234,14 +292,16 @@ async fn handle_connection(socket: WebSocket, state: Arc<AppState>) {
                         let preferences = user.preferences.clone();
                         authenticated_user = Some(user);
 
-                        send_msg(&out_tx, ServerMessage::Authenticated {
-                            token,
-                            user: user_info,
-                        }).await;
+                        send_msg(
+                            &out_tx,
+                            ServerMessage::Authenticated {
+                                token,
+                                user: user_info,
+                            },
+                        )
+                        .await;
 
-                        send_msg(&out_tx, ServerMessage::PreferencesLoaded {
-                            preferences,
-                        }).await;
+                        send_msg(&out_tx, ServerMessage::PreferencesLoaded { preferences }).await;
 
                         if authenticated_user.as_ref().unwrap().display_name.is_none() {
                             send_msg(&out_tx, ServerMessage::NeedDisplayName).await;
@@ -250,22 +310,34 @@ async fn handle_connection(socket: WebSocket, state: Arc<AppState>) {
                         break; // Exit auth loop
                     }
                     Ok(None) => {
-                        send_msg(&out_tx, ServerMessage::AuthError {
-                            reason: "Invalid or expired session".to_string(),
-                        }).await;
+                        send_msg(
+                            &out_tx,
+                            ServerMessage::AuthError {
+                                reason: "Invalid or expired session".to_string(),
+                            },
+                        )
+                        .await;
                     }
                     Err(e) => {
                         tracing::error!("Session validation error: {}", e);
-                        send_msg(&out_tx, ServerMessage::AuthError {
-                            reason: "Internal error".to_string(),
-                        }).await;
+                        send_msg(
+                            &out_tx,
+                            ServerMessage::AuthError {
+                                reason: "Internal error".to_string(),
+                            },
+                        )
+                        .await;
                     }
                 }
             }
             _ => {
-                send_msg(&out_tx, ServerMessage::Error {
-                    message: "Not authenticated".to_string(),
-                }).await;
+                send_msg(
+                    &out_tx,
+                    ServerMessage::Error {
+                        message: "Not authenticated".to_string(),
+                    },
+                )
+                .await;
             }
         }
     }
@@ -294,9 +366,13 @@ async fn handle_connection(socket: WebSocket, state: Arc<AppState>) {
         let client_msg: ClientMessage = match serde_json::from_str(&text) {
             Ok(m) => m,
             Err(_) => {
-                send_msg(&out_tx, ServerMessage::Error {
-                    message: "Invalid message format".to_string(),
-                }).await;
+                send_msg(
+                    &out_tx,
+                    ServerMessage::Error {
+                        message: "Invalid message format".to_string(),
+                    },
+                )
+                .await;
                 continue;
             }
         };
@@ -353,20 +429,28 @@ async fn handle_connection(socket: WebSocket, state: Arc<AppState>) {
                         draw_offered_by: None,
                     };
 
-                    state.games.insert(game_id.clone(), Arc::new(Mutex::new(room)));
+                    state
+                        .games
+                        .insert(game_id.clone(), Arc::new(Mutex::new(room)));
 
                     // Notify both players
-                    let _ = player_a.tx.send(MatchResult {
-                        game_id: game_id.clone(),
-                        opponent_name: player_b.display_name.clone(),
-                        my_color: "white".to_string(),
-                    }).await;
+                    let _ = player_a
+                        .tx
+                        .send(MatchResult {
+                            game_id: game_id.clone(),
+                            opponent_name: player_b.display_name.clone(),
+                            my_color: "white".to_string(),
+                        })
+                        .await;
 
-                    let _ = player_b.tx.send(MatchResult {
-                        game_id,
-                        opponent_name: player_a.display_name.clone(),
-                        my_color: "black".to_string(),
-                    }).await;
+                    let _ = player_b
+                        .tx
+                        .send(MatchResult {
+                            game_id,
+                            opponent_name: player_a.display_name.clone(),
+                            my_color: "black".to_string(),
+                        })
+                        .await;
                 } else {
                     send_msg(&out_tx, ServerMessage::Searching).await;
 
@@ -374,11 +458,13 @@ async fn handle_connection(socket: WebSocket, state: Arc<AppState>) {
                     let out_tx_clone = out_tx.clone();
                     tokio::spawn(async move {
                         if let Some(result) = match_rx.recv().await {
-                            let _ = out_tx_clone.send(ServerMessage::GameStart {
-                                game_id: result.game_id,
-                                opponent: result.opponent_name,
-                                my_color: result.my_color,
-                            }).await;
+                            let _ = out_tx_clone
+                                .send(ServerMessage::GameStart {
+                                    game_id: result.game_id,
+                                    opponent: result.opponent_name,
+                                    my_color: result.my_color,
+                                })
+                                .await;
                         }
                     });
                 }
@@ -426,9 +512,15 @@ async fn handle_connection(socket: WebSocket, state: Arc<AppState>) {
                                     let pool = state.pool.clone();
                                     tokio::spawn(async move {
                                         if let Err(e) = db::save_finished_game(
-                                            &pool, white_id, black_id,
-                                            &result, &detail, &moves_json,
-                                        ).await {
+                                            &pool,
+                                            white_id,
+                                            black_id,
+                                            &result,
+                                            &detail,
+                                            &moves_json,
+                                        )
+                                        .await
+                                        {
                                             tracing::error!("Failed to save game: {}", e);
                                         }
                                     });
@@ -440,9 +532,13 @@ async fn handle_connection(socket: WebSocket, state: Arc<AppState>) {
                         }
                     }
                 } else {
-                    send_msg(&out_tx, ServerMessage::Error {
-                        message: "Game not found".to_string(),
-                    }).await;
+                    send_msg(
+                        &out_tx,
+                        ServerMessage::Error {
+                            message: "Game not found".to_string(),
+                        },
+                    )
+                    .await;
                 }
             }
             ClientMessage::Resign { game_id } => {
@@ -471,9 +567,15 @@ async fn handle_connection(socket: WebSocket, state: Arc<AppState>) {
                             let pool = state.pool.clone();
                             tokio::spawn(async move {
                                 if let Err(e) = db::save_finished_game(
-                                    &pool, white_id, black_id,
-                                    &result, &detail, &moves_json,
-                                ).await {
+                                    &pool,
+                                    white_id,
+                                    black_id,
+                                    &result,
+                                    &detail,
+                                    &moves_json,
+                                )
+                                .await
+                                {
                                     tracing::error!("Failed to save game: {}", e);
                                 }
                             });
@@ -531,9 +633,15 @@ async fn handle_connection(socket: WebSocket, state: Arc<AppState>) {
                                 let pool = state.pool.clone();
                                 tokio::spawn(async move {
                                     if let Err(e) = db::save_finished_game(
-                                        &pool, white_id, black_id,
-                                        &result, &detail, &moves_json,
-                                    ).await {
+                                        &pool,
+                                        white_id,
+                                        black_id,
+                                        &result,
+                                        &detail,
+                                        &moves_json,
+                                    )
+                                    .await
+                                    {
                                         tracing::error!("Failed to save game: {}", e);
                                     }
                                 });
@@ -549,26 +657,32 @@ async fn handle_connection(socket: WebSocket, state: Arc<AppState>) {
                     room.draw_offered_by = None;
                 }
             }
-            ClientMessage::SetPassword { password } => {
-                match auth::hash_password(&password) {
-                    Ok(hash) => {
-                        if let Err(e) = db::set_password(&state.pool, user_id, &hash).await {
-                            tracing::error!("Failed to set password: {}", e);
-                            send_msg(&out_tx, ServerMessage::Error {
+            ClientMessage::SetPassword { password } => match auth::hash_password(&password) {
+                Ok(hash) => {
+                    if let Err(e) = db::set_password(&state.pool, user_id, &hash).await {
+                        tracing::error!("Failed to set password: {}", e);
+                        send_msg(
+                            &out_tx,
+                            ServerMessage::Error {
                                 message: "Failed to set password".to_string(),
-                            }).await;
-                        } else {
-                            send_msg(&out_tx, ServerMessage::PasswordSet).await;
-                        }
-                    }
-                    Err(e) => {
-                        tracing::error!("Failed to hash password: {}", e);
-                        send_msg(&out_tx, ServerMessage::Error {
-                            message: "Failed to set password".to_string(),
-                        }).await;
+                            },
+                        )
+                        .await;
+                    } else {
+                        send_msg(&out_tx, ServerMessage::PasswordSet).await;
                     }
                 }
-            }
+                Err(e) => {
+                    tracing::error!("Failed to hash password: {}", e);
+                    send_msg(
+                        &out_tx,
+                        ServerMessage::Error {
+                            message: "Failed to set password".to_string(),
+                        },
+                    )
+                    .await;
+                }
+            },
             ClientMessage::GetPreferences => {
                 match db::get_preferences(&state.pool, user_id).await {
                     Ok(preferences) => {
@@ -576,9 +690,13 @@ async fn handle_connection(socket: WebSocket, state: Arc<AppState>) {
                     }
                     Err(e) => {
                         tracing::error!("Failed to get preferences: {}", e);
-                        send_msg(&out_tx, ServerMessage::Error {
-                            message: "Failed to load preferences".to_string(),
-                        }).await;
+                        send_msg(
+                            &out_tx,
+                            ServerMessage::Error {
+                                message: "Failed to load preferences".to_string(),
+                            },
+                        )
+                        .await;
                     }
                 }
             }
@@ -589,9 +707,13 @@ async fn handle_connection(socket: WebSocket, state: Arc<AppState>) {
                     }
                     Err(e) => {
                         tracing::error!("Failed to update preferences: {}", e);
-                        send_msg(&out_tx, ServerMessage::Error {
-                            message: "Failed to update preferences".to_string(),
-                        }).await;
+                        send_msg(
+                            &out_tx,
+                            ServerMessage::Error {
+                                message: "Failed to update preferences".to_string(),
+                            },
+                        )
+                        .await;
                     }
                 }
             }
@@ -599,82 +721,123 @@ async fn handle_connection(socket: WebSocket, state: Arc<AppState>) {
                 match db::find_user_by_email(&state.pool, &email).await {
                     Ok(Some(friend_user)) => {
                         if friend_user.id == user_id {
-                            send_msg(&out_tx, ServerMessage::Error {
-                                message: "Cannot add yourself as a friend".to_string(),
-                            }).await;
+                            send_msg(
+                                &out_tx,
+                                ServerMessage::Error {
+                                    message: "Cannot add yourself as a friend".to_string(),
+                                },
+                            )
+                            .await;
                             continue;
                         }
                         if let Err(e) = db::add_friend(&state.pool, user_id, friend_user.id).await {
                             tracing::error!("Failed to add friend: {}", e);
-                            send_msg(&out_tx, ServerMessage::Error {
-                                message: "Failed to add friend".to_string(),
-                            }).await;
+                            send_msg(
+                                &out_tx,
+                                ServerMessage::Error {
+                                    message: "Failed to add friend".to_string(),
+                                },
+                            )
+                            .await;
                         } else {
                             let online = state.connected_users.contains_key(&friend_user.id);
-                            send_msg(&out_tx, ServerMessage::FriendAdded {
-                                friend: FriendInfo {
-                                    id: friend_user.id.to_string(),
-                                    display_name: friend_user.display_name.unwrap_or_else(|| "Anonymous".to_string()),
-                                    elo: friend_user.elo,
-                                    online,
+                            send_msg(
+                                &out_tx,
+                                ServerMessage::FriendAdded {
+                                    friend: FriendInfo {
+                                        id: friend_user.id.to_string(),
+                                        display_name: friend_user
+                                            .display_name
+                                            .unwrap_or_else(|| "Anonymous".to_string()),
+                                        elo: friend_user.elo,
+                                        online,
+                                    },
                                 },
-                            }).await;
+                            )
+                            .await;
                         }
                     }
                     Ok(None) => {
-                        send_msg(&out_tx, ServerMessage::Error {
-                            message: "User not found".to_string(),
-                        }).await;
+                        send_msg(
+                            &out_tx,
+                            ServerMessage::Error {
+                                message: "User not found".to_string(),
+                            },
+                        )
+                        .await;
                     }
                     Err(e) => {
                         tracing::error!("Failed to look up friend: {}", e);
-                        send_msg(&out_tx, ServerMessage::Error {
-                            message: "Failed to add friend".to_string(),
-                        }).await;
+                        send_msg(
+                            &out_tx,
+                            ServerMessage::Error {
+                                message: "Failed to add friend".to_string(),
+                            },
+                        )
+                        .await;
                     }
                 }
             }
-            ClientMessage::RemoveFriend { friend_id } => {
-                match Uuid::parse_str(&friend_id) {
-                    Ok(fid) => {
-                        if let Err(e) = db::remove_friend(&state.pool, user_id, fid).await {
-                            tracing::error!("Failed to remove friend: {}", e);
-                            send_msg(&out_tx, ServerMessage::Error {
+            ClientMessage::RemoveFriend { friend_id } => match Uuid::parse_str(&friend_id) {
+                Ok(fid) => {
+                    if let Err(e) = db::remove_friend(&state.pool, user_id, fid).await {
+                        tracing::error!("Failed to remove friend: {}", e);
+                        send_msg(
+                            &out_tx,
+                            ServerMessage::Error {
                                 message: "Failed to remove friend".to_string(),
-                            }).await;
-                        } else {
-                            send_msg(&out_tx, ServerMessage::FriendRemoved { friend_id }).await;
-                        }
-                    }
-                    Err(_) => {
-                        send_msg(&out_tx, ServerMessage::Error {
-                            message: "Invalid friend ID".to_string(),
-                        }).await;
+                            },
+                        )
+                        .await;
+                    } else {
+                        send_msg(&out_tx, ServerMessage::FriendRemoved { friend_id }).await;
                     }
                 }
-            }
-            ClientMessage::ListFriends => {
-                match db::list_friends(&state.pool, user_id).await {
-                    Ok(friends) => {
-                        let friend_infos: Vec<FriendInfo> = friends.into_iter().map(|f| {
+                Err(_) => {
+                    send_msg(
+                        &out_tx,
+                        ServerMessage::Error {
+                            message: "Invalid friend ID".to_string(),
+                        },
+                    )
+                    .await;
+                }
+            },
+            ClientMessage::ListFriends => match db::list_friends(&state.pool, user_id).await {
+                Ok(friends) => {
+                    let friend_infos: Vec<FriendInfo> = friends
+                        .into_iter()
+                        .map(|f| {
                             let online = state.connected_users.contains_key(&f.id);
                             FriendInfo {
                                 id: f.id.to_string(),
-                                display_name: f.display_name.unwrap_or_else(|| "Anonymous".to_string()),
+                                display_name: f
+                                    .display_name
+                                    .unwrap_or_else(|| "Anonymous".to_string()),
                                 elo: f.elo,
                                 online,
                             }
-                        }).collect();
-                        send_msg(&out_tx, ServerMessage::FriendsList { friends: friend_infos }).await;
-                    }
-                    Err(e) => {
-                        tracing::error!("Failed to list friends: {}", e);
-                        send_msg(&out_tx, ServerMessage::Error {
-                            message: "Failed to list friends".to_string(),
-                        }).await;
-                    }
+                        })
+                        .collect();
+                    send_msg(
+                        &out_tx,
+                        ServerMessage::FriendsList {
+                            friends: friend_infos,
+                        },
+                    )
+                    .await;
                 }
-            }
+                Err(e) => {
+                    tracing::error!("Failed to list friends: {}", e);
+                    send_msg(
+                        &out_tx,
+                        ServerMessage::Error {
+                            message: "Failed to list friends".to_string(),
+                        },
+                    )
+                    .await;
+                }
+            },
             _ => {
                 // Ignore auth messages in game loop
             }

@@ -34,13 +34,23 @@ const KEYBINDINGS: &[(&str, &str, &str)] = &[
 
 pub fn draw_help_modal(frame: &mut Frame, app: &App) {
     // Debug log
-    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/chesstui-debug.log") {
+    if let Ok(mut f) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("/tmp/chesstui-debug.log")
+    {
         use std::io::Write;
-        let _ = writeln!(f, "[draw] draw_help_modal called, show_help={}", app.show_help);
+        let _ = writeln!(
+            f,
+            "[draw] draw_help_modal called, show_help={}",
+            app.show_help
+        );
     }
     let area = frame.area();
     // Size the modal to fully cover the board image (board is ~66% width, full height minus bars)
-    let modal_width = (area.width * 75 / 100).max(55).min(area.width.saturating_sub(2));
+    let modal_width = (area.width * 75 / 100)
+        .max(55)
+        .min(area.width.saturating_sub(2));
     let modal_height = area.height.saturating_sub(4).max(10);
 
     let x = area.x + (area.width.saturating_sub(modal_width)) / 2;

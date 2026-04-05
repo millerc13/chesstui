@@ -16,7 +16,6 @@ const LOGO: &[&str] = &[
     r"  ╚═════╝╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝   ╚═╝    ╚═════╝ ╚═╝",
 ];
 
-
 pub fn draw_color_picker(frame: &mut Frame, app: &App) {
     let area = frame.area();
     let preview = Theme::from_scheme(ColorScheme::ALL[app.color_scheme_index]);
@@ -41,10 +40,7 @@ pub fn draw_color_picker(frame: &mut Frame, app: &App) {
                 app.tick,
                 &preview,
             );
-            frame.render_widget(
-                Paragraph::new(lines).alignment(Alignment::Center),
-                cols[0],
-            );
+            frame.render_widget(Paragraph::new(lines).alignment(Alignment::Center), cols[0]);
         }
 
         // Right piece (different piece)
@@ -57,10 +53,7 @@ pub fn draw_color_picker(frame: &mut Frame, app: &App) {
                 app.tick,
                 &preview,
             );
-            frame.render_widget(
-                Paragraph::new(lines).alignment(Alignment::Center),
-                cols[2],
-            );
+            frame.render_widget(Paragraph::new(lines).alignment(Alignment::Center), cols[2]);
         }
 
         cols[1]
@@ -69,19 +62,19 @@ pub fn draw_color_picker(frame: &mut Frame, app: &App) {
     };
 
     let rows = Layout::vertical([
-        Constraint::Length(3),                          // top padding
-        Constraint::Length(LOGO.len() as u16),          // logo
-        Constraint::Length(1),                          // subtitle
-        Constraint::Length(2),                          // spacer
-        Constraint::Length(1),                          // section title
-        Constraint::Length(1),                          // spacer
+        Constraint::Length(3),                                 // top padding
+        Constraint::Length(LOGO.len() as u16),                 // logo
+        Constraint::Length(1),                                 // subtitle
+        Constraint::Length(2),                                 // spacer
+        Constraint::Length(1),                                 // section title
+        Constraint::Length(1),                                 // spacer
         Constraint::Length(ColorScheme::ALL.len() as u16 + 2), // color list + padding
-        Constraint::Length(2),                          // spacer
-        Constraint::Length(1),                          // session status
-        Constraint::Length(1),                          // spacer
-        Constraint::Length(1),                          // continue hint
-        Constraint::Min(1),                             // flex
-        Constraint::Length(1),                          // footer
+        Constraint::Length(2),                                 // spacer
+        Constraint::Length(1),                                 // session status
+        Constraint::Length(1),                                 // spacer
+        Constraint::Length(1),                                 // continue hint
+        Constraint::Min(1),                                    // flex
+        Constraint::Length(1),                                 // footer
     ])
     .split(center_area);
 
@@ -120,7 +113,12 @@ pub fn draw_color_picker(frame: &mut Frame, app: &App) {
 
     // ── Continue hint ──
     let hint = Paragraph::new(Line::from(vec![
-        Span::styled("Enter", Style::default().fg(preview.shortcut_color).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            "Enter",
+            Style::default()
+                .fg(preview.shortcut_color)
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::styled(" to continue  ", Style::default().fg(preview.text_dim)),
         Span::styled("j/k", Style::default().fg(preview.shortcut_color)),
         Span::styled(" to browse themes  ", Style::default().fg(preview.text_dim)),
@@ -133,9 +131,15 @@ pub fn draw_color_picker(frame: &mut Frame, app: &App) {
     // ── Footer ──
     let version = env!("CARGO_PKG_VERSION");
     let footer = Paragraph::new(Line::from(vec![
-        Span::styled(format!("v{}", version), Style::default().fg(preview.text_dim)),
+        Span::styled(
+            format!("v{}", version),
+            Style::default().fg(preview.text_dim),
+        ),
         Span::styled("  ·  built by ", Style::default().fg(preview.text_dim)),
-        Span::styled("resurgence.cloud", Style::default().fg(preview.accent_secondary)),
+        Span::styled(
+            "resurgence.cloud",
+            Style::default().fg(preview.accent_secondary),
+        ),
     ]))
     .alignment(Alignment::Center);
     frame.render_widget(footer, rows[12]);
@@ -186,8 +190,18 @@ fn draw_scheme_list(frame: &mut Frame, app: &App, _preview: &Theme, area: Rect) 
         let buf = frame.buffer_mut();
         buf.set_string(cx, y, arrow, arrow_style);
         buf.set_string(cx + 3, y, scheme.name(), name_style);
-        buf.set_string(cx + 22, y, swatch_primary, Style::default().fg(scheme_theme.logo_color));
-        buf.set_string(cx + 28, y, swatch_secondary, Style::default().fg(scheme_theme.accent_secondary));
+        buf.set_string(
+            cx + 22,
+            y,
+            swatch_primary,
+            Style::default().fg(scheme_theme.logo_color),
+        );
+        buf.set_string(
+            cx + 28,
+            y,
+            swatch_secondary,
+            Style::default().fg(scheme_theme.accent_secondary),
+        );
 
         // Row highlight for selected
         if selected {

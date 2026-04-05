@@ -34,7 +34,9 @@ pub fn file_enabled() -> bool {
 }
 
 fn file_log(msg: &str) {
-    if !file_enabled() { return; }
+    if !file_enabled() {
+        return;
+    }
     if let Ok(mut guard) = FILE_LOG.lock() {
         if let Some(f) = guard.as_mut() {
             let _ = writeln!(f, "{}", msg);
@@ -112,7 +114,10 @@ pub struct Timer {
 
 impl Timer {
     pub fn new(section: &'static str) -> Self {
-        Self { section, start: Instant::now() }
+        Self {
+            section,
+            start: Instant::now(),
+        }
     }
 }
 

@@ -12,10 +12,7 @@ pub struct DbUser {
     pub preferences: serde_json::Value,
 }
 
-pub async fn find_user_by_email(
-    pool: &PgPool,
-    email: &str,
-) -> Result<Option<DbUser>, sqlx::Error> {
+pub async fn find_user_by_email(pool: &PgPool, email: &str) -> Result<Option<DbUser>, sqlx::Error> {
     sqlx::query_as::<_, DbUser>("SELECT id, email, display_name, elo, password_hash, preferences FROM public.users WHERE email = $1")
         .bind(email)
         .fetch_optional(pool)
@@ -94,10 +91,7 @@ pub async fn create_session(
     Ok(())
 }
 
-pub async fn validate_session(
-    pool: &PgPool,
-    token: &str,
-) -> Result<Option<DbUser>, sqlx::Error> {
+pub async fn validate_session(pool: &PgPool, token: &str) -> Result<Option<DbUser>, sqlx::Error> {
     sqlx::query_as::<_, DbUser>(
         "SELECT u.id, u.email, u.display_name, u.elo, u.password_hash, u.preferences \
          FROM public.sessions s JOIN public.users u ON s.user_id = u.id \
@@ -130,7 +124,11 @@ pub async fn save_finished_game(
     Ok(())
 }
 
-pub async fn set_password(pool: &PgPool, user_id: Uuid, password_hash: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+pub async fn set_password(
+    pool: &PgPool,
+    user_id: Uuid,
+    password_hash: &str,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     sqlx::query("UPDATE public.users SET password_hash = $1 WHERE id = $2")
         .bind(password_hash)
         .bind(user_id)
@@ -139,7 +137,10 @@ pub async fn set_password(pool: &PgPool, user_id: Uuid, password_hash: &str) -> 
     Ok(())
 }
 
-pub async fn get_user_for_login(pool: &PgPool, email: &str) -> Result<Option<DbUser>, Box<dyn std::error::Error + Send + Sync>> {
+pub async fn get_user_for_login(
+    pool: &PgPool,
+    email: &str,
+) -> Result<Option<DbUser>, Box<dyn std::error::Error + Send + Sync>> {
     let user = sqlx::query_as::<_, DbUser>("SELECT id, email, display_name, elo, password_hash, preferences FROM public.users WHERE email = $1")
         .bind(email)
         .fetch_optional(pool)
@@ -147,15 +148,23 @@ pub async fn get_user_for_login(pool: &PgPool, email: &str) -> Result<Option<DbU
     Ok(user)
 }
 
-pub async fn get_preferences(pool: &PgPool, user_id: Uuid) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
-    let row: (serde_json::Value,) = sqlx::query_as("SELECT preferences FROM public.users WHERE id = $1")
-        .bind(user_id)
-        .fetch_one(pool)
-        .await?;
+pub async fn get_preferences(
+    pool: &PgPool,
+    user_id: Uuid,
+) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
+    let row: (serde_json::Value,) =
+        sqlx::query_as("SELECT preferences FROM public.users WHERE id = $1")
+            .bind(user_id)
+            .fetch_one(pool)
+            .await?;
     Ok(row.0)
 }
 
-pub async fn update_preferences(pool: &PgPool, user_id: Uuid, preferences: &serde_json::Value) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+pub async fn update_preferences(
+    pool: &PgPool,
+    user_id: Uuid,
+    preferences: &serde_json::Value,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     sqlx::query("UPDATE public.users SET preferences = $1 WHERE id = $2")
         .bind(preferences)
         .bind(user_id)
@@ -164,22 +173,34 @@ pub async fn update_preferences(pool: &PgPool, user_id: Uuid, preferences: &serd
     Ok(())
 }
 
-pub async fn add_friend(pool: &PgPool, user_id: Uuid, friend_id: Uuid) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    sqlx::query("INSERT INTO public.friends (user_id, friend_id) VALUES ($1, $2) ON CONFLICT DO NOTHING")
-        .bind(user_id)
-        .bind(friend_id)
-        .execute(pool)
-        .await?;
+pub async fn add_friend(
+    pool: &PgPool,
+    user_id: Uuid,
+    friend_id: Uuid,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    sqlx::query(
+        "INSERT INTO public.friends (user_id, friend_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+    )
+    .bind(user_id)
+    .bind(friend_id)
+    .execute(pool)
+    .await?;
     // Also add reverse direction
-    sqlx::query("INSERT INTO public.friends (user_id, friend_id) VALUES ($1, $2) ON CONFLICT DO NOTHING")
-        .bind(friend_id)
-        .bind(user_id)
-        .execute(pool)
-        .await?;
+    sqlx::query(
+        "INSERT INTO public.friends (user_id, friend_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+    )
+    .bind(friend_id)
+    .bind(user_id)
+    .execute(pool)
+    .await?;
     Ok(())
 }
 
-pub async fn remove_friend(pool: &PgPool, user_id: Uuid, friend_id: Uuid) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+pub async fn remove_friend(
+    pool: &PgPool,
+    user_id: Uuid,
+    friend_id: Uuid,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     sqlx::query("DELETE FROM public.friends WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1)")
         .bind(user_id)
         .bind(friend_id)
@@ -188,7 +209,10 @@ pub async fn remove_friend(pool: &PgPool, user_id: Uuid, friend_id: Uuid) -> Res
     Ok(())
 }
 
-pub async fn list_friends(pool: &PgPool, user_id: Uuid) -> Result<Vec<DbUser>, Box<dyn std::error::Error + Send + Sync>> {
+pub async fn list_friends(
+    pool: &PgPool,
+    user_id: Uuid,
+) -> Result<Vec<DbUser>, Box<dyn std::error::Error + Send + Sync>> {
     let friends = sqlx::query_as::<_, DbUser>("SELECT u.id, u.email, u.display_name, u.elo, u.password_hash, u.preferences FROM public.friends f JOIN public.users u ON u.id = f.friend_id WHERE f.user_id = $1")
         .bind(user_id)
         .fetch_all(pool)

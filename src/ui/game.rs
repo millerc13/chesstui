@@ -3,27 +3,36 @@ use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::Frame;
 
-use crate::app::{App, GameMode};
 use super::board::ChessBoardWidget;
 use super::board_image;
 use super::command_bar::CommandBarWidget;
 use super::debug_panel::DebugPanel;
 use super::move_list::MoveListWidget;
 use super::widgets::{render_section_header, PlayerBar};
+use crate::app::{App, GameMode};
 
 pub fn draw_game(frame: &mut Frame, app: &mut App) {
     let area = frame.area();
 
     let rows = Layout::vertical([
-        Constraint::Length(1),   // opponent player bar
-        Constraint::Min(10),     // main area (move list + board + game info)
-        Constraint::Length(1),   // your player bar
-        Constraint::Length(2),   // command bar
+        Constraint::Length(1), // opponent player bar
+        Constraint::Min(10),   // main area (move list + board + game info)
+        Constraint::Length(1), // your player bar
+        Constraint::Length(2), // command bar
     ])
     .split(area);
 
     // --- Determine player info ---
-    let (top_name, top_rating, top_icon, top_captured, bottom_name, bottom_rating, bottom_icon, bottom_captured) = {
+    let (
+        top_name,
+        top_rating,
+        top_icon,
+        top_captured,
+        bottom_name,
+        bottom_rating,
+        bottom_icon,
+        bottom_captured,
+    ) = {
         // "bottom" = the player sitting at the bottom of the board (White unless flipped)
         // "top" = opponent at the top
         let (bottom_color, top_color) = if app.board_flipped {
@@ -34,8 +43,16 @@ pub fn draw_game(frame: &mut Frame, app: &mut App) {
 
         let (bottom_n, bottom_r, top_n, top_r) = match &app.game_mode {
             GameMode::Local => {
-                let bn = if bottom_color == ChessColor::White { "White" } else { "Black" };
-                let tn = if top_color == ChessColor::White { "White" } else { "Black" };
+                let bn = if bottom_color == ChessColor::White {
+                    "White"
+                } else {
+                    "Black"
+                };
+                let tn = if top_color == ChessColor::White {
+                    "White"
+                } else {
+                    "Black"
+                };
                 (bn.to_string(), 0u32, tn.to_string(), 0u32)
             }
             GameMode::VsAi(ai_color) => {
@@ -45,7 +62,11 @@ pub fn draw_game(frame: &mut Frame, app: &mut App) {
                     ("You".to_string(), 0, "Computer".to_string(), 0)
                 }
             }
-            GameMode::Online { opponent_name, my_color, .. } => {
+            GameMode::Online {
+                opponent_name,
+                my_color,
+                ..
+            } => {
                 if bottom_color == *my_color {
                     ("You".to_string(), 0, opponent_name.clone(), 0)
                 } else {
@@ -54,8 +75,16 @@ pub fn draw_game(frame: &mut Frame, app: &mut App) {
             }
         };
 
-        let bottom_icon = if bottom_color == ChessColor::White { '\u{2659}' } else { '\u{265f}' };
-        let top_icon = if top_color == ChessColor::White { '\u{2659}' } else { '\u{265f}' };
+        let bottom_icon = if bottom_color == ChessColor::White {
+            '\u{2659}'
+        } else {
+            '\u{265f}'
+        };
+        let top_icon = if top_color == ChessColor::White {
+            '\u{2659}'
+        } else {
+            '\u{265f}'
+        };
 
         // Captured pieces: pieces captured BY a color (= opponent pieces taken)
         let white_caps = app.captured_by_white();
@@ -73,12 +102,21 @@ pub fn draw_game(frame: &mut Frame, app: &mut App) {
             black_caps.iter().map(|c| (c.piece, c.color)).collect()
         };
 
-        (top_n, top_r, top_icon, top_caps, bottom_n, bottom_r, bottom_icon, bottom_caps)
+        (
+            top_n,
+            top_r,
+            top_icon,
+            top_caps,
+            bottom_n,
+            bottom_r,
+            bottom_icon,
+            bottom_caps,
+        )
     };
 
     // Opponent player bar (top)
-    let top_bar = PlayerBar::new(&top_name, top_rating, &top_captured, "--:--", &app.theme)
-        .icon(top_icon);
+    let top_bar =
+        PlayerBar::new(&top_name, top_rating, &top_captured, "--:--", &app.theme).icon(top_icon);
     frame.render_widget(top_bar, rows[0]);
 
     // Main area: 3-column layout
@@ -107,8 +145,14 @@ pub fn draw_game(frame: &mut Frame, app: &mut App) {
     render_game_info(frame, app, cols[2]);
 
     // Your player bar (bottom)
-    let bottom_bar = PlayerBar::new(&bottom_name, bottom_rating, &bottom_captured, "--:--", &app.theme)
-        .icon(bottom_icon);
+    let bottom_bar = PlayerBar::new(
+        &bottom_name,
+        bottom_rating,
+        &bottom_captured,
+        "--:--",
+        &app.theme,
+    )
+    .icon(bottom_icon);
     frame.render_widget(bottom_bar, rows[2]);
 
     // Command bar
@@ -158,7 +202,9 @@ fn render_game_info(frame: &mut Frame, app: &App, area: Rect) {
             area.x + 1,
             content_y + 1,
             "Standard",
-            Style::default().fg(theme.text_bright).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme.text_bright)
+                .add_modifier(Modifier::BOLD),
         );
     }
 
@@ -191,7 +237,9 @@ fn render_game_info(frame: &mut Frame, app: &App, area: Rect) {
             area.x + 1,
             content_y + 4,
             &material_text,
-            Style::default().fg(theme.text_bright).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme.text_bright)
+                .add_modifier(Modifier::BOLD),
         );
     }
 }
@@ -219,8 +267,13 @@ fn draw_board(frame: &mut Frame, app: &mut App, area: Rect) {
         let mut cw: u16;
         loop {
             cw = (ratio * ch as f32).round() as u16;
-            if cw * 8 <= available_w { break; }
-            if ch <= 1 { cw = available_w / 8; break; }
+            if cw * 8 <= available_w {
+                break;
+            }
+            if ch <= 1 {
+                cw = available_w / 8;
+                break;
+            }
             ch -= 1;
         }
         ch = ch.max(1);
@@ -231,8 +284,10 @@ fn draw_board(frame: &mut Frame, app: &mut App, area: Rect) {
         let oy = area.y + (area.height.saturating_sub(board_h + label_row_h)) / 2;
         let bx = ox + label_col_w;
         app.board_layout = crate::app::BoardLayout {
-            board_x: bx, board_y: oy,
-            sq_w: cw as f32, sq_h: ch as f32,
+            board_x: bx,
+            board_y: oy,
+            sq_w: cw as f32,
+            sq_h: ch as f32,
         };
 
         frame.render_widget(board_widget, area);
@@ -262,7 +317,9 @@ fn draw_board_image(frame: &mut Frame, app: &mut App, area: Rect) {
     let px_h = board_rows as u32 * cell_size.1 as u32;
     let board_px_side = px_w.min(px_h);
     let sq_px = board_px_side / 8;
-    if sq_px < 4 { return; }
+    if sq_px < 4 {
+        return;
+    }
 
     // Rebuild piece cache only when size or style changes
     let need_piece_cache = match &app.cached_piece_cache {
@@ -302,18 +359,21 @@ fn draw_board_image(frame: &mut Frame, app: &mut App, area: Rect) {
 
     // Save layout for mouse hit-testing
     app.board_layout = crate::app::BoardLayout {
-        board_x: ox, board_y: oy,
+        board_x: ox,
+        board_y: oy,
         sq_w: board_char_w as f32 / 8.0,
         sq_h: board_char_h as f32 / 8.0,
     };
 
     // Only re-encode PNG if image actually changed
-    let needs_transmit = if new_hash != app.kitty_image_hash || app.kitty_cache.is_none()
+    let needs_transmit = if new_hash != app.kitty_image_hash
+        || app.kitty_cache.is_none()
         || app.cached_board_sq_px != sq_px
     {
         crate::perf_timer!("kitty_png_encode");
         let png_bytes = super::kitty_transmit::encode_png(&board_img);
-        let transmit_str = super::kitty_transmit::build_transmit_sequence(&png_bytes, app.kitty_image_id);
+        let transmit_str =
+            super::kitty_transmit::build_transmit_sequence(&png_bytes, app.kitty_image_id);
         app.kitty_cache = Some(super::kitty_transmit::KittyBoardCache {
             transmit_str,
             image_hash: new_hash,
@@ -341,10 +401,17 @@ fn draw_board_image(frame: &mut Frame, app: &mut App, area: Rect) {
         .add_modifier(ratatui::style::Modifier::DIM);
 
     for dr in 0..8u8 {
-        let (_, rank) = if app.board_flipped { (7 - 0, dr) } else { (0, 7 - dr) };
+        let (_, rank) = if app.board_flipped {
+            (7 - 0, dr)
+        } else {
+            (0, 7 - dr)
+        };
         let y = oy + (dr as f32 * ch_per_sq + ch_per_sq / 2.0) as u16;
         if y < area.y + area.height {
-            if let Some(cell) = frame.buffer_mut().cell_mut(ratatui::layout::Position::new(ox.saturating_sub(1), y)) {
+            if let Some(cell) = frame
+                .buffer_mut()
+                .cell_mut(ratatui::layout::Position::new(ox.saturating_sub(1), y))
+            {
                 cell.set_char((b'1' + rank) as char);
                 cell.set_style(label_style);
             }
@@ -355,10 +422,17 @@ fn draw_board_image(frame: &mut Frame, app: &mut App, area: Rect) {
     let cw_per_sq = board_char_w as f32 / 8.0;
     let fy = oy + board_char_h as u16;
     for dc in 0..8u8 {
-        let (file, _) = if app.board_flipped { (7 - dc, 0) } else { (dc, 0) };
+        let (file, _) = if app.board_flipped {
+            (7 - dc, 0)
+        } else {
+            (dc, 0)
+        };
         let x = ox + (dc as f32 * cw_per_sq + cw_per_sq / 2.0) as u16;
         if x < area.x + area.width && fy < area.y + area.height {
-            if let Some(cell) = frame.buffer_mut().cell_mut(ratatui::layout::Position::new(x, fy)) {
+            if let Some(cell) = frame
+                .buffer_mut()
+                .cell_mut(ratatui::layout::Position::new(x, fy))
+            {
                 cell.set_char((b'a' + file) as char);
                 cell.set_style(label_style);
             }
@@ -366,7 +440,12 @@ fn draw_board_image(frame: &mut Frame, app: &mut App, area: Rect) {
     }
 }
 
-fn draw_promotion_popup(frame: &mut Frame, app: &App, promo_moves: &[cozy_chess::Move], area: Rect) {
+fn draw_promotion_popup(
+    frame: &mut Frame,
+    app: &App,
+    promo_moves: &[cozy_chess::Move],
+    area: Rect,
+) {
     let popup_width = (promo_moves.len() as u16) * 4 + 2;
     let popup_height = 3;
     let x = area.x + (area.width.saturating_sub(popup_width)) / 2;
@@ -375,7 +454,10 @@ fn draw_promotion_popup(frame: &mut Frame, app: &App, promo_moves: &[cozy_chess:
 
     for py in popup_area.y..popup_area.y + popup_area.height {
         for px in popup_area.x..popup_area.x + popup_area.width {
-            if let Some(cell) = frame.buffer_mut().cell_mut(ratatui::layout::Position::new(px, py)) {
+            if let Some(cell) = frame
+                .buffer_mut()
+                .cell_mut(ratatui::layout::Position::new(px, py))
+            {
                 cell.set_char(' ');
                 cell.set_style(Style::default().bg(app.theme.border_dim));
             }
@@ -383,29 +465,42 @@ fn draw_promotion_popup(frame: &mut Frame, app: &App, promo_moves: &[cozy_chess:
     }
 
     frame.buffer_mut().set_string(
-        popup_area.x + 1, popup_area.y,
+        popup_area.x + 1,
+        popup_area.y,
         "Promote to:",
-        Style::default().fg(app.theme.text_bright).bg(app.theme.border_dim),
+        Style::default()
+            .fg(app.theme.text_bright)
+            .bg(app.theme.border_dim),
     );
 
     for (i, mv) in promo_moves.iter().enumerate() {
         let sym = App::promotion_piece_symbol(mv);
         let style = if i == app.promotion_choice {
-            Style::default().fg(app.theme.text_bright).bg(app.theme.accent)
+            Style::default()
+                .fg(app.theme.text_bright)
+                .bg(app.theme.accent)
         } else {
-            Style::default().fg(app.theme.text_primary).bg(app.theme.border_dim)
+            Style::default()
+                .fg(app.theme.text_primary)
+                .bg(app.theme.border_dim)
         };
         frame.buffer_mut().set_string(
-            popup_area.x + 1 + (i as u16) * 4, popup_area.y + 1,
-            format!(" {} ", sym), style,
+            popup_area.x + 1 + (i as u16) * 4,
+            popup_area.y + 1,
+            format!(" {} ", sym),
+            style,
         );
     }
 
     let hint = "h/l choose  Enter confirm  Esc cancel";
     if popup_area.y + 2 < area.y + area.height {
         frame.buffer_mut().set_string(
-            popup_area.x + 1, popup_area.y + 2,
-            hint, Style::default().fg(app.theme.text_dim).bg(app.theme.border_dim),
+            popup_area.x + 1,
+            popup_area.y + 2,
+            hint,
+            Style::default()
+                .fg(app.theme.text_dim)
+                .bg(app.theme.border_dim),
         );
     }
 }

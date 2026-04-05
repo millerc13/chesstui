@@ -1,13 +1,13 @@
 use ratatui::layout::{Alignment, Constraint, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, BorderType, Paragraph};
+use ratatui::widgets::{Block, BorderType, Borders, Paragraph};
 use ratatui::Frame;
 
-use crate::app::{App, MenuTab, PlayMenuItem};
-use crate::config::PieceStyle;
 use super::board_image;
 use super::widgets::CardButton;
+use crate::app::{App, MenuTab, PlayMenuItem};
+use crate::config::PieceStyle;
 
 const TITLE_ART: &[&str] = &[
     r" ██████╗██╗  ██╗███████╗███████╗███████╗████████╗██╗   ██╗██╗",
@@ -23,11 +23,8 @@ pub fn draw_menu(frame: &mut Frame, app: &mut App) {
 
     // First split: main area vs friends sidebar (right column spans full height)
     let sidebar_width: u16 = 28.min(area.width / 4);
-    let main_cols = Layout::horizontal([
-        Constraint::Min(40),
-        Constraint::Length(sidebar_width),
-    ])
-    .split(area);
+    let main_cols =
+        Layout::horizontal([Constraint::Min(40), Constraint::Length(sidebar_width)]).split(area);
 
     // Friends sidebar takes the full right column
     super::friends::draw_friends_sidebar(frame, main_cols[1], app);
@@ -35,16 +32,16 @@ pub fn draw_menu(frame: &mut Frame, app: &mut App) {
     // Left column: header + tabs + content + footer
     let left = main_cols[0];
     let rows = Layout::vertical([
-        Constraint::Length(1),                           // top padding
-        Constraint::Length(TITLE_ART.len() as u16),      // logo
-        Constraint::Length(1),                           // subtitle
-        Constraint::Length(1),                           // spacer
-        Constraint::Length(1),                           // tab bar
-        Constraint::Length(1),                           // spacer
-        Constraint::Min(6),                              // tab content
-        Constraint::Length(1),                           // stats bar
-        Constraint::Length(1),                           // hints
-        Constraint::Length(1),                           // footer
+        Constraint::Length(1),                      // top padding
+        Constraint::Length(TITLE_ART.len() as u16), // logo
+        Constraint::Length(1),                      // subtitle
+        Constraint::Length(1),                      // spacer
+        Constraint::Length(1),                      // tab bar
+        Constraint::Length(1),                      // spacer
+        Constraint::Min(6),                         // tab content
+        Constraint::Length(1),                      // stats bar
+        Constraint::Length(1),                      // hints
+        Constraint::Length(1),                      // footer
     ])
     .split(left);
 
@@ -60,7 +57,12 @@ pub fn draw_menu(frame: &mut Frame, app: &mut App) {
 fn draw_title(frame: &mut Frame, app: &App, area: Rect) {
     let lines: Vec<Line> = TITLE_ART
         .iter()
-        .map(|line| Line::from(Span::styled(*line, Style::default().fg(app.theme.logo_color))))
+        .map(|line| {
+            Line::from(Span::styled(
+                *line,
+                Style::default().fg(app.theme.logo_color),
+            ))
+        })
         .collect();
     frame.render_widget(Paragraph::new(lines).alignment(Alignment::Center), area);
 }
@@ -171,14 +173,13 @@ fn draw_replays_tab(frame: &mut Frame, app: &App, area: Rect) {
                 Span::styled("   ", Style::default()),
                 Span::styled(
                     "Play a game to see replays here!",
-                    Style::default().fg(app.theme.text_dim).add_modifier(Modifier::ITALIC),
+                    Style::default()
+                        .fg(app.theme.text_dim)
+                        .add_modifier(Modifier::ITALIC),
                 ),
             ]),
         ];
-        frame.render_widget(
-            Paragraph::new(lines).alignment(Alignment::Center),
-            content,
-        );
+        frame.render_widget(Paragraph::new(lines).alignment(Alignment::Center), content);
         return;
     }
 
@@ -187,7 +188,7 @@ fn draw_replays_tab(frame: &mut Frame, app: &App, area: Rect) {
     let rows = Layout::vertical([
         Constraint::Length(1), // header
         Constraint::Length(1), // separator
-        Constraint::Min(1),   // list
+        Constraint::Min(1),    // list
         Constraint::Length(1), // scrollbar
         Constraint::Length(1), // footer
     ])
@@ -205,10 +206,7 @@ fn draw_replays_tab(frame: &mut Frame, app: &App, area: Rect) {
             .fg(app.theme.accent_secondary)
             .add_modifier(Modifier::BOLD),
     ));
-    frame.render_widget(
-        Paragraph::new(header).alignment(Alignment::Center),
-        rows[0],
-    );
+    frame.render_widget(Paragraph::new(header).alignment(Alignment::Center), rows[0]);
 
     // Separator
     let sep = "\u{2500}".repeat(table_width);
@@ -230,7 +228,13 @@ fn draw_replays_tab(frame: &mut Frame, app: &App, area: Rect) {
     };
 
     let mut lines = Vec::new();
-    for (i, game) in app.replay_list.iter().enumerate().skip(scroll).take(visible) {
+    for (i, game) in app
+        .replay_list
+        .iter()
+        .enumerate()
+        .skip(scroll)
+        .take(visible)
+    {
         let date_short = if game.date.len() >= 10 {
             &game.date[..10]
         } else {
@@ -257,10 +261,7 @@ fn draw_replays_tab(frame: &mut Frame, app: &App, area: Rect) {
         };
         lines.push(Line::from(Span::styled(padded, style)));
     }
-    frame.render_widget(
-        Paragraph::new(lines).alignment(Alignment::Center),
-        rows[2],
-    );
+    frame.render_widget(Paragraph::new(lines).alignment(Alignment::Center), rows[2]);
 
     // Scrollbar indicator
     if app.replay_list.len() > visible && visible > 0 {
@@ -308,7 +309,8 @@ fn draw_settings_tab(frame: &mut Frame, app: &mut App, area: Rect) {
         Constraint::Length(list_w),
         Constraint::Length(gap),
         Constraint::Length(preview_w),
-    ]).split(outer);
+    ])
+    .split(outer);
 
     let left = cols[0];
     let right = cols[2];
@@ -316,37 +318,56 @@ fn draw_settings_tab(frame: &mut Frame, app: &mut App, area: Rect) {
     // ── Left column: style list ──────────────────────────────────────
 
     let left_rows = Layout::vertical([
-        Constraint::Length(1),          // section header
-        Constraint::Length(1),          // blank
-        Constraint::Length(list_len),   // style list
-        Constraint::Length(1),          // blank
-        Constraint::Length(1),          // description
-        Constraint::Min(0),            // spacer
-        Constraint::Length(1),          // hints
-    ]).split(left);
+        Constraint::Length(1),        // section header
+        Constraint::Length(1),        // blank
+        Constraint::Length(list_len), // style list
+        Constraint::Length(1),        // blank
+        Constraint::Length(1),        // description
+        Constraint::Min(0),           // spacer
+        Constraint::Length(1),        // hints
+    ])
+    .split(left);
 
     // Section header
     let header = Line::from(Span::styled(
         "Piece Style",
-        Style::default().fg(app.theme.accent).add_modifier(Modifier::BOLD),
+        Style::default()
+            .fg(app.theme.accent)
+            .add_modifier(Modifier::BOLD),
     ));
     frame.render_widget(Paragraph::new(header), left_rows[0]);
 
     // Style list
-    let current_idx = PieceStyle::ALL.iter().position(|&s| s == app.piece_style).unwrap_or(0);
-    let items: Vec<Line> = PieceStyle::ALL.iter().enumerate().map(|(i, style)| {
-        let cursor_str = if i == app.settings_style_index { " \u{25b8} " } else { "   " };
-        let check = if i == current_idx { " \u{2713}" } else { "" };
-        let base_style = if i == app.settings_style_index {
-            Style::default().fg(app.theme.text_bright).bg(app.theme.accent)
-        } else {
-            Style::default().fg(app.theme.text_primary)
-        };
-        Line::from(vec![
-            Span::styled(format!("{}{}", cursor_str, style.name()), base_style),
-            Span::styled(check.to_string(), Style::default().fg(app.theme.accent_secondary)),
-        ])
-    }).collect();
+    let current_idx = PieceStyle::ALL
+        .iter()
+        .position(|&s| s == app.piece_style)
+        .unwrap_or(0);
+    let items: Vec<Line> = PieceStyle::ALL
+        .iter()
+        .enumerate()
+        .map(|(i, style)| {
+            let cursor_str = if i == app.settings_style_index {
+                " \u{25b8} "
+            } else {
+                "   "
+            };
+            let check = if i == current_idx { " \u{2713}" } else { "" };
+            let base_style = if i == app.settings_style_index {
+                Style::default()
+                    .fg(app.theme.text_bright)
+                    .bg(app.theme.accent)
+            } else {
+                Style::default().fg(app.theme.text_primary)
+            };
+            Line::from(vec![
+                Span::styled(format!("{}{}", cursor_str, style.name()), base_style),
+                Span::styled(
+                    check.to_string(),
+                    Style::default().fg(app.theme.accent_secondary),
+                ),
+            ])
+        })
+        .collect();
     frame.render_widget(Paragraph::new(items), left_rows[2]);
 
     // Description
@@ -354,7 +375,9 @@ fn draw_settings_tab(frame: &mut Frame, app: &mut App, area: Rect) {
     frame.render_widget(
         Paragraph::new(Line::from(Span::styled(
             desc,
-            Style::default().fg(app.theme.text_dim).add_modifier(Modifier::ITALIC),
+            Style::default()
+                .fg(app.theme.text_dim)
+                .add_modifier(Modifier::ITALIC),
         ))),
         left_rows[4],
     );
@@ -385,7 +408,8 @@ fn draw_settings_tab(frame: &mut Frame, app: &mut App, area: Rect) {
     // Render piece preview image if terminal supports graphics protocol
     let cell_size = app.board_picker.as_ref().map(|p| p.font_size());
     if let Some(cell_size) = cell_size {
-        if cell_size.0 > 0 && cell_size.1 > 0 && preview_inner.width > 2 && preview_inner.height > 2 {
+        if cell_size.0 > 0 && cell_size.1 > 0 && preview_inner.width > 2 && preview_inner.height > 2
+        {
             // Compute pixel dimensions for the preview
             let avail_px_w = preview_inner.width as u32 * cell_size.0 as u32;
             let avail_px_h = preview_inner.height as u32 * cell_size.1 as u32;
@@ -421,7 +445,8 @@ fn draw_settings_tab(frame: &mut Frame, app: &mut App, area: Rect) {
             let ix = preview_inner.x + preview_inner.width.saturating_sub(img_char_w) / 2;
             let iy = preview_inner.y + preview_inner.height.saturating_sub(img_char_h) / 2;
             let img_area = Rect::new(
-                ix, iy,
+                ix,
+                iy,
                 img_char_w.min(preview_inner.width),
                 img_char_h.min(preview_inner.height),
             );
@@ -444,8 +469,10 @@ fn draw_settings_tab(frame: &mut Frame, app: &mut App, area: Rect) {
         ];
         let fy = preview_inner.y + preview_inner.height.saturating_sub(2) / 2;
         let fallback_area = Rect::new(
-            preview_inner.x, fy,
-            preview_inner.width, 2.min(preview_inner.height),
+            preview_inner.x,
+            fy,
+            preview_inner.width,
+            2.min(preview_inner.height),
         );
         frame.render_widget(
             Paragraph::new(fallback).alignment(Alignment::Center),
@@ -504,8 +531,14 @@ fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
             format!("chesstui v{}", version),
             Style::default().fg(app.theme.text_dim),
         ),
-        Span::styled("  \u{00b7}  built by ", Style::default().fg(app.theme.text_dim)),
-        Span::styled("resurgence.cloud", Style::default().fg(app.theme.accent_secondary)),
+        Span::styled(
+            "  \u{00b7}  built by ",
+            Style::default().fg(app.theme.text_dim),
+        ),
+        Span::styled(
+            "resurgence.cloud",
+            Style::default().fg(app.theme.accent_secondary),
+        ),
     ]))
     .alignment(Alignment::Center);
     frame.render_widget(footer, area);

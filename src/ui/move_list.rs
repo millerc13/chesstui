@@ -4,10 +4,10 @@ use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Paragraph, Widget};
 
+use super::widgets::render_section_header;
 use crate::game::notation::to_algebraic;
 use crate::game::state::GameState;
 use crate::theme::Theme;
-use super::widgets::render_section_header;
 
 pub struct MoveListWidget<'a> {
     game: &'a GameState,
@@ -17,7 +17,11 @@ pub struct MoveListWidget<'a> {
 
 impl<'a> MoveListWidget<'a> {
     pub fn new(game: &'a GameState, theme: &'a Theme, scroll: usize) -> Self {
-        Self { game, theme, scroll }
+        Self {
+            game,
+            theme,
+            scroll,
+        }
     }
 }
 
@@ -60,17 +64,14 @@ impl Widget for MoveListWidget<'_> {
             let is_last_pair = (i / 2) == last_pair_idx;
 
             let num_style = if is_last_pair {
-                Style::default().fg(self.theme.accent).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(self.theme.accent)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 Style::default().fg(self.theme.text_dim)
             };
 
-            let mut spans = vec![
-                Span::styled(
-                    format!(" {:>2}. ", move_num),
-                    num_style,
-                ),
-            ];
+            let mut spans = vec![Span::styled(format!(" {:>2}. ", move_num), num_style)];
 
             // White's move
             let white_san = to_algebraic(&history[i].previous_board, &history[i].mv);
@@ -111,11 +112,7 @@ impl Widget for MoveListWidget<'_> {
         let max_scroll = lines.len().saturating_sub(content_h);
         let scroll = self.scroll.min(max_scroll);
 
-        let visible_lines: Vec<Line> = lines
-            .into_iter()
-            .skip(scroll)
-            .take(content_h)
-            .collect();
+        let visible_lines: Vec<Line> = lines.into_iter().skip(scroll).take(content_h).collect();
 
         let content_area = Rect::new(area.x, content_y, area.width, content_h as u16);
         Paragraph::new(visible_lines).render(content_area, buf);

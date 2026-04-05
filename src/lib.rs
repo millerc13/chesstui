@@ -1,11 +1,11 @@
-pub mod game;
-pub mod theme;
-pub mod app;
-pub mod ui;
-pub mod input;
 pub mod ai;
+pub mod app;
 pub mod config;
+pub mod game;
+pub mod input;
+pub mod network;
 pub mod perf;
 pub mod protocol;
 pub mod server;
-pub mod network;
+pub mod theme;
+pub mod ui;

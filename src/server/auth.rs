@@ -1,4 +1,7 @@
-use argon2::{Argon2, PasswordHasher, PasswordVerifier, password_hash::{SaltString, rand_core::OsRng}};
+use argon2::{
+    password_hash::{rand_core::OsRng, SaltString},
+    Argon2, PasswordHasher, PasswordVerifier,
+};
 use rand::Rng;
 
 pub fn generate_otp() -> String {
@@ -38,7 +41,8 @@ pub async fn send_otp_email(
 pub fn hash_password(password: &str) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
     let salt = SaltString::generate(&mut OsRng);
     let argon2 = Argon2::default();
-    let hash = argon2.hash_password(password.as_bytes(), &salt)
+    let hash = argon2
+        .hash_password(password.as_bytes(), &salt)
         .map_err(|e| format!("Failed to hash password: {}", e))?;
     Ok(hash.to_string())
 }
@@ -49,7 +53,9 @@ pub fn verify_password(hash: &str, password: &str) -> bool {
         Ok(h) => h,
         Err(_) => return false,
     };
-    Argon2::default().verify_password(password.as_bytes(), &parsed).is_ok()
+    Argon2::default()
+        .verify_password(password.as_bytes(), &parsed)
+        .is_ok()
 }
 
 pub fn generate_session_token() -> String {

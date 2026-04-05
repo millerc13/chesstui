@@ -76,7 +76,11 @@ pub fn save_game(game: &GameState, mode: &GameMode, result: &GameResult) -> Opti
         .collect();
 
     let (white_player, black_player, server_game_id) = match mode {
-        GameMode::Online { game_id, my_color, opponent_name } => {
+        GameMode::Online {
+            game_id,
+            my_color,
+            opponent_name,
+        } => {
             let (wp, bp) = match my_color {
                 cozy_chess::Color::White => (Some("You".to_string()), Some(opponent_name.clone())),
                 cozy_chess::Color::Black => (Some(opponent_name.clone()), Some("You".to_string())),
@@ -114,12 +118,7 @@ pub fn load_replays() -> Vec<SavedGame> {
         .into_iter()
         .flatten()
         .filter_map(|entry| entry.ok())
-        .filter(|entry| {
-            entry
-                .path()
-                .extension()
-                .map_or(false, |ext| ext == "json")
-        })
+        .filter(|entry| entry.path().extension().map_or(false, |ext| ext == "json"))
         .filter_map(|entry| {
             let contents = fs::read_to_string(entry.path()).ok()?;
             serde_json::from_str::<SavedGame>(&contents).ok()

@@ -1,4 +1,4 @@
-use chesstui::game::move_input::{MoveInputParser, InputResult};
+use chesstui::game::move_input::{InputResult, MoveInputParser};
 use cozy_chess::Board;
 
 #[test]
@@ -43,8 +43,8 @@ fn invalid_input_returns_no_match() {
     // At this point, 'z' alone might be NeedMore (unlikely but check)
     // Feed more to get NoMatch
     match parser.feed('9') {
-        InputResult::NoMatch => {}, // expected
-        _ => {} // 'z' alone might already be NoMatch
+        InputResult::NoMatch => {} // expected
+        _ => {}                    // 'z' alone might already be NoMatch
     }
 }
 
@@ -69,7 +69,8 @@ fn castling_oo() {
     let board = Board::from_fen(
         "r1bqk2r/ppppbppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
         false,
-    ).unwrap();
+    )
+    .unwrap();
     let mut parser = MoveInputParser::new(&board);
     assert!(matches!(parser.feed('O'), InputResult::NeedMore(_)));
     match parser.feed('O') {

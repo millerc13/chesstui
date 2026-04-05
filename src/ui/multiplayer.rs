@@ -1,11 +1,11 @@
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, BorderType, Paragraph};
+use ratatui::widgets::{Block, BorderType, Borders, Paragraph};
 use ratatui::Frame;
 
-use crate::app::{App, MultiplayerState};
 use super::widgets::CardButton;
+use crate::app::{App, MultiplayerState};
 
 const SPINNER: &[char] = &['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 
@@ -17,8 +17,20 @@ pub fn draw_multiplayer_tab(frame: &mut Frame, app: &App, area: Rect) {
         MultiplayerState::WaitingForOtp => draw_waiting_otp(frame, app, area),
         MultiplayerState::EnteringOtp => draw_otp_input(frame, app, area),
         MultiplayerState::EnteringDisplayName => draw_display_name_input(frame, app, area),
-        MultiplayerState::EnteringPassword => draw_password_input(frame, app, area, "Set a Password", "Min 6 characters · Enter to confirm"),
-        MultiplayerState::EnteringLoginPassword => draw_password_input(frame, app, area, "Enter Password", "Enter to log in · Esc to go back"),
+        MultiplayerState::EnteringPassword => draw_password_input(
+            frame,
+            app,
+            area,
+            "Set a Password",
+            "Min 6 characters · Enter to confirm",
+        ),
+        MultiplayerState::EnteringLoginPassword => draw_password_input(
+            frame,
+            app,
+            area,
+            "Enter Password",
+            "Enter to log in · Esc to go back",
+        ),
         MultiplayerState::LoggedIn { display_name, elo } => {
             draw_logged_in(frame, app, area, display_name, *elo)
         }
@@ -54,8 +66,8 @@ fn draw_logged_out(frame: &mut Frame, app: &App, area: Rect) {
     for (i, (icon, title, sub)) in items.iter().enumerate() {
         let y = content.y + header_height + i as u16 * (card_height + gap);
         let card_area = Rect::new(content.x, y, card_width, card_height);
-        let card = CardButton::new(icon, title, sub, &app.theme)
-            .selected(i == app.multiplayer_selection);
+        let card =
+            CardButton::new(icon, title, sub, &app.theme).selected(i == app.multiplayer_selection);
         frame.render_widget(card, card_area);
     }
 }
@@ -182,7 +194,10 @@ fn draw_logged_in(frame: &mut Frame, app: &App, area: Rect, display_name: &str, 
                 .fg(app.theme.text_bright)
                 .add_modifier(Modifier::BOLD),
         ),
-        Span::styled("  │  ", Style::default().fg(ratatui::style::Color::Indexed(238))),
+        Span::styled(
+            "  │  ",
+            Style::default().fg(ratatui::style::Color::Indexed(238)),
+        ),
         Span::styled("ELO: ", Style::default().fg(app.theme.text_dim)),
         Span::styled(
             format!("{}", elo),
@@ -199,8 +214,8 @@ fn draw_logged_in(frame: &mut Frame, app: &App, area: Rect, display_name: &str, 
     for (i, (icon, title, sub)) in items.iter().enumerate() {
         let y = content.y + profile_height + i as u16 * (card_height + gap);
         let card_area = Rect::new(content.x, y, card_width, card_height);
-        let card = CardButton::new(icon, title, sub, &app.theme)
-            .selected(i == app.multiplayer_selection);
+        let card =
+            CardButton::new(icon, title, sub, &app.theme).selected(i == app.multiplayer_selection);
         frame.render_widget(card, card_area);
     }
 }
@@ -268,8 +283,7 @@ fn draw_text_input(frame: &mut Frame, app: &App, area: Rect, label: &str, value:
         Line::from(""),
         Line::from(Span::styled(
             format!("  {}", input_padded),
-            Style::default()
-                .fg(app.theme.text_bright),
+            Style::default().fg(app.theme.text_bright),
         )),
         Line::from(""),
         Line::from(Span::styled(

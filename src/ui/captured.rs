@@ -21,18 +21,18 @@ impl<'a> CapturedWidget<'a> {
 
 fn piece_symbol(piece: Piece, color: ChessColor) -> &'static str {
     match (color, piece) {
-        (ChessColor::White, Piece::Pawn)   => "\u{2659}",
+        (ChessColor::White, Piece::Pawn) => "\u{2659}",
         (ChessColor::White, Piece::Knight) => "\u{2658}",
         (ChessColor::White, Piece::Bishop) => "\u{2657}",
-        (ChessColor::White, Piece::Rook)   => "\u{2656}",
-        (ChessColor::White, Piece::Queen)  => "\u{2655}",
-        (ChessColor::White, Piece::King)   => "\u{2654}",
-        (ChessColor::Black, Piece::Pawn)   => "\u{265f}",
+        (ChessColor::White, Piece::Rook) => "\u{2656}",
+        (ChessColor::White, Piece::Queen) => "\u{2655}",
+        (ChessColor::White, Piece::King) => "\u{2654}",
+        (ChessColor::Black, Piece::Pawn) => "\u{265f}",
         (ChessColor::Black, Piece::Knight) => "\u{265e}",
         (ChessColor::Black, Piece::Bishop) => "\u{265d}",
-        (ChessColor::Black, Piece::Rook)   => "\u{265c}",
-        (ChessColor::Black, Piece::Queen)  => "\u{265b}",
-        (ChessColor::Black, Piece::King)   => "\u{265a}",
+        (ChessColor::Black, Piece::Rook) => "\u{265c}",
+        (ChessColor::Black, Piece::Queen) => "\u{265b}",
+        (ChessColor::Black, Piece::King) => "\u{265a}",
     }
 }
 
@@ -56,10 +56,7 @@ impl Widget for CapturedWidget<'_> {
         let deco_len = area.width.saturating_sub(13) as usize;
         let deco = "\u{2500}".repeat(deco_len);
         let header = Line::from(vec![
-            Span::styled(
-                " \u{2694} ",
-                Style::default().fg(self.theme.icon_color),
-            ),
+            Span::styled(" \u{2694} ", Style::default().fg(self.theme.icon_color)),
             Span::styled(
                 "Captured ",
                 Style::default()

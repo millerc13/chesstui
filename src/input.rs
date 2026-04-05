@@ -11,13 +11,18 @@ fn debug_log(msg: &str) {
         .append(true)
         .open("/tmp/chesstui-debug.log")
     {
-        let _ = writeln!(f, "[{}] {}", chrono::Local::now().format("%H:%M:%S%.3f"), msg);
+        let _ = writeln!(
+            f,
+            "[{}] {}",
+            chrono::Local::now().format("%H:%M:%S%.3f"),
+            msg
+        );
     }
 }
 
 /// Returns true if the mouse event changed app state and a redraw is needed.
 pub fn handle_mouse(app: &mut App, event: crossterm::event::MouseEvent) -> bool {
-    use crossterm::event::{MouseEventKind, MouseButton};
+    use crossterm::event::{MouseButton, MouseEventKind};
 
     if !matches!(event.kind, MouseEventKind::Down(MouseButton::Left)) {
         return false;
@@ -30,15 +35,21 @@ pub fn handle_mouse(app: &mut App, event: crossterm::event::MouseEvent) -> bool 
     }
 
     let layout = &app.board_layout;
-    if layout.sq_w < 0.1 || layout.sq_h < 0.1 { return false; }
+    if layout.sq_w < 0.1 || layout.sq_h < 0.1 {
+        return false;
+    }
 
     let col = event.column;
     let row = event.row;
-    if col < layout.board_x || row < layout.board_y { return false; }
+    if col < layout.board_x || row < layout.board_y {
+        return false;
+    }
 
     let dc = ((col - layout.board_x) as f32 / layout.sq_w) as u8;
     let dr = ((row - layout.board_y) as f32 / layout.sq_h) as u8;
-    if dc >= 8 || dr >= 8 { return false; }
+    if dc >= 8 || dr >= 8 {
+        return false;
+    }
 
     let (file, rank) = if app.board_flipped {
         (7 - dc, dr)
@@ -200,7 +211,10 @@ fn handle_menu(app: &mut App, key: KeyEvent) {
     // Tab switching with left/right or h/l
     match key.code {
         KeyCode::Left | KeyCode::Char('h') if !play_tab_intercept_lr => {
-            let idx = MenuTab::ALL.iter().position(|t| *t == app.active_tab).unwrap_or(0);
+            let idx = MenuTab::ALL
+                .iter()
+                .position(|t| *t == app.active_tab)
+                .unwrap_or(0);
             let new_idx = (idx + tab_count - 1) % tab_count;
             app.active_tab = MenuTab::ALL[new_idx];
             if app.active_tab == MenuTab::Replays {
@@ -209,7 +223,10 @@ fn handle_menu(app: &mut App, key: KeyEvent) {
             return;
         }
         KeyCode::Right | KeyCode::Char('l') if !play_tab_intercept_lr => {
-            let idx = MenuTab::ALL.iter().position(|t| *t == app.active_tab).unwrap_or(0);
+            let idx = MenuTab::ALL
+                .iter()
+                .position(|t| *t == app.active_tab)
+                .unwrap_or(0);
             let new_idx = (idx + 1) % tab_count;
             app.active_tab = MenuTab::ALL[new_idx];
             if app.active_tab == MenuTab::Replays {
@@ -520,7 +537,10 @@ fn handle_multiplayer_tab(app: &mut App, key: KeyEvent) {
 // ── Help Modal ─────────────────────────────────────────────────────────────
 
 fn handle_help_input(app: &mut App, key: KeyEvent) {
-    debug_log(&format!("  handle_help_input: code={:?} show_help={}", key.code, app.show_help));
+    debug_log(&format!(
+        "  handle_help_input: code={:?} show_help={}",
+        key.code, app.show_help
+    ));
     // Handle Ctrl+j / Ctrl+k for scrolling before the generic Char(c) arm
     if key.modifiers.contains(KeyModifiers::CONTROL) {
         match key.code {
@@ -581,7 +601,9 @@ fn handle_in_game(app: &mut App, key: KeyEvent) {
 fn handle_play(app: &mut App, key: KeyEvent) {
     debug_log(&format!(
         "  handle_play: code={:?} modifiers={:?} pending_promo={}",
-        key.code, key.modifiers, app.pending_promotion.is_some()
+        key.code,
+        key.modifiers,
+        app.pending_promotion.is_some()
     ));
 
     // Promotion takes priority
@@ -668,7 +690,10 @@ fn handle_play(app: &mut App, key: KeyEvent) {
 
         // ── Help toggle ──
         KeyCode::Char('?') => {
-            debug_log(&format!("  '?' pressed! show_help was {}, toggling", app.show_help));
+            debug_log(&format!(
+                "  '?' pressed! show_help was {}, toggling",
+                app.show_help
+            ));
             app.show_help = !app.show_help;
             app.help_search.clear();
             app.help_scroll = 0;
@@ -709,7 +734,10 @@ fn handle_play(app: &mut App, key: KeyEvent) {
         }
 
         other => {
-            debug_log(&format!("  handle_play UNMATCHED: code={:?} modifiers={:?}", other, key.modifiers));
+            debug_log(&format!(
+                "  handle_play UNMATCHED: code={:?} modifiers={:?}",
+                other, key.modifiers
+            ));
         }
     }
 }
@@ -904,9 +932,7 @@ fn handle_postgame(app: &mut App, key: KeyEvent) {
                     #[cfg(target_os = "macos")]
                     {
                         use std::process::{Command, Stdio};
-                        if let Ok(mut child) = Command::new("pbcopy")
-                            .stdin(Stdio::piped())
-                            .spawn()
+                        if let Ok(mut child) = Command::new("pbcopy").stdin(Stdio::piped()).spawn()
                         {
                             if let Some(ref mut stdin) = child.stdin {
                                 use std::io::Write;

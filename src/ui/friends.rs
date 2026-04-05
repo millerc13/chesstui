@@ -1,7 +1,7 @@
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::text::Span;
-use ratatui::widgets::{Block, Borders, BorderType};
+use ratatui::widgets::{Block, BorderType, Borders};
 use ratatui::Frame;
 
 use crate::app::{App, MultiplayerState};
@@ -47,12 +47,7 @@ pub fn draw_friends_sidebar(frame: &mut Frame, area: Rect, app: &App) {
         } else {
             "No friends yet"
         };
-        buf.set_string(
-            inner.x + 1,
-            y,
-            msg,
-            Style::default().fg(app.theme.text_dim),
-        );
+        buf.set_string(inner.x + 1, y, msg, Style::default().fg(app.theme.text_dim));
         y += 1;
 
         if is_logged_in && y < max_y {
@@ -94,12 +89,7 @@ pub fn draw_friends_sidebar(frame: &mut Frame, area: Rect, app: &App) {
             // Right-aligned ELO
             let elo_str = format!("{}", friend.elo);
             let elo_x = (inner.x + inner.width).saturating_sub(elo_str.len() as u16 + 1);
-            buf.set_string(
-                elo_x,
-                y,
-                &elo_str,
-                Style::default().fg(app.theme.text_dim),
-            );
+            buf.set_string(elo_x, y, &elo_str, Style::default().fg(app.theme.text_dim));
 
             y += 1;
             if y >= max_y {
@@ -117,12 +107,7 @@ pub fn draw_friends_sidebar(frame: &mut Frame, area: Rect, app: &App) {
             if friend.online && friend.activity != "Offline" {
                 let icon = "[⚔]";
                 let icon_x = (inner.x + inner.width).saturating_sub(icon.len() as u16 + 1);
-                buf.set_string(
-                    icon_x,
-                    y,
-                    icon,
-                    Style::default().fg(app.theme.accent),
-                );
+                buf.set_string(icon_x, y, icon, Style::default().fg(app.theme.accent));
             }
 
             y += 1;

@@ -14,7 +14,9 @@ pub enum PieceStyle {
 }
 
 impl Default for PieceStyle {
-    fn default() -> Self { Self::Generated3D }
+    fn default() -> Self {
+        Self::Generated3D
+    }
 }
 
 impl PieceStyle {
@@ -69,7 +71,9 @@ pub struct Config {
     pub show_move_hints: bool,
 }
 
-fn default_true() -> bool { true }
+fn default_true() -> bool {
+    true
+}
 
 impl Default for Config {
     fn default() -> Self {

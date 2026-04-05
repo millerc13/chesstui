@@ -56,8 +56,7 @@ impl GameRoom {
     }
 
     pub fn is_finished(&self) -> bool {
-        self.external_result.is_some()
-            || matches!(self.state.status(), GameStatus::Finished(_))
+        self.external_result.is_some() || matches!(self.state.status(), GameStatus::Finished(_))
     }
 
     pub fn result_strings(&self) -> Option<(String, String)> {
@@ -84,9 +83,7 @@ impl GameRoom {
                     GameResult::DrawByInsufficientMaterial => {
                         ("Draw".to_string(), "Insufficient material".to_string())
                     }
-                    GameResult::DrawByAgreement => {
-                        ("Draw".to_string(), "By agreement".to_string())
-                    }
+                    GameResult::DrawByAgreement => ("Draw".to_string(), "By agreement".to_string()),
                     GameResult::Resignation(color) => {
                         let winner = match color {
                             Color::White => "Black wins",

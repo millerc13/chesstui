@@ -149,7 +149,10 @@ impl GameState {
         if self.board.colors(opponent_color).has(dest) {
             // Find which piece type is on the destination
             let piece = self.piece_on(dest)?;
-            return Some(CapturedPiece { piece, color: opponent_color });
+            return Some(CapturedPiece {
+                piece,
+                color: opponent_color,
+            });
         }
 
         // En passant: pawn moves diagonally to empty square
@@ -162,7 +165,10 @@ impl GameState {
             let ep_square = Square::new(ep_file, ep_rank);
             if self.board.colors(opponent_color).has(ep_square) {
                 let _ = mover_color; // suppress warning
-                return Some(CapturedPiece { piece: Piece::Pawn, color: opponent_color });
+                return Some(CapturedPiece {
+                    piece: Piece::Pawn,
+                    color: opponent_color,
+                });
             }
         }
 
@@ -170,7 +176,14 @@ impl GameState {
     }
 
     fn piece_on(&self, square: Square) -> Option<Piece> {
-        for piece in [Piece::Pawn, Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen, Piece::King] {
+        for piece in [
+            Piece::Pawn,
+            Piece::Knight,
+            Piece::Bishop,
+            Piece::Rook,
+            Piece::Queen,
+            Piece::King,
+        ] {
             if self.board.pieces(piece).has(square) {
                 return Some(piece);
             }
@@ -237,8 +250,12 @@ impl GameState {
                 // After restoring the board, side_to_move() is the mover again.
                 let mover = self.board.side_to_move();
                 match mover {
-                    Color::White => { self.captured_by_white.pop(); }
-                    Color::Black => { self.captured_by_black.pop(); }
+                    Color::White => {
+                        self.captured_by_white.pop();
+                    }
+                    Color::Black => {
+                        self.captured_by_black.pop();
+                    }
                 }
                 let _ = cap; // used for documentation clarity
             }

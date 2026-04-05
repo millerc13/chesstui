@@ -4,8 +4,8 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 use ratatui::Frame;
 
-use crate::app::App;
 use super::board::ChessBoardWidget;
+use crate::app::App;
 
 pub fn draw_replay_viewer(frame: &mut Frame, app: &App) {
     let viewer = match &app.replay_viewer {
@@ -24,28 +24,28 @@ pub fn draw_replay_viewer(frame: &mut Frame, app: &App) {
     // Left: board + status
     let left_rows = Layout::vertical([
         Constraint::Length(2), // header
-        Constraint::Min(10),  // board
+        Constraint::Min(10),   // board
         Constraint::Length(1), // move counter
         Constraint::Length(1), // hints
     ])
     .split(cols[0]);
 
     // Header: result
-    let header = Paragraph::new(Line::from(vec![
-        Span::styled(
-            format!("  {} \u{2014} {}  ", viewer.game.result, viewer.game.result_detail),
-            Style::default()
-                .fg(app.theme.text_bright)
-                .add_modifier(Modifier::BOLD),
+    let header = Paragraph::new(Line::from(vec![Span::styled(
+        format!(
+            "  {} \u{2014} {}  ",
+            viewer.game.result, viewer.game.result_detail
         ),
-    ]))
+        Style::default()
+            .fg(app.theme.text_bright)
+            .add_modifier(Modifier::BOLD),
+    )]))
     .alignment(Alignment::Center);
     frame.render_widget(header, left_rows[0]);
 
     // Board
     let board = viewer.current_board();
-    let widget = ChessBoardWidget::new(board, &app.theme)
-        .flipped(app.board_flipped);
+    let widget = ChessBoardWidget::new(board, &app.theme).flipped(app.board_flipped);
 
     // Derive last move highlight from current position
     let widget = if viewer.current_move > 0 {
@@ -67,11 +67,7 @@ pub fn draw_replay_viewer(frame: &mut Frame, app: &App) {
 
     // Move counter
     let counter = Paragraph::new(Line::from(Span::styled(
-        format!(
-            "Move {} of {}",
-            viewer.current_move,
-            viewer.total_moves()
-        ),
+        format!("Move {} of {}", viewer.current_move, viewer.total_moves()),
         Style::default().fg(app.theme.text_dim),
     )))
     .alignment(Alignment::Center);
@@ -104,12 +100,16 @@ fn draw_move_list(frame: &mut Frame, app: &App, area: Rect) {
     let rows = Layout::vertical([
         Constraint::Length(1), // header
         Constraint::Length(1), // separator
-        Constraint::Min(1),   // moves
+        Constraint::Min(1),    // moves
     ])
     .split(area);
 
     let header = Paragraph::new(Line::from(Span::styled(
-        format!("  {} \u{2014} {}", viewer.game.mode, viewer.game.date.get(..10).unwrap_or(&viewer.game.date)),
+        format!(
+            "  {} \u{2014} {}",
+            viewer.game.mode,
+            viewer.game.date.get(..10).unwrap_or(&viewer.game.date)
+        ),
         Style::default()
             .fg(app.theme.accent)
             .add_modifier(Modifier::BOLD),
@@ -162,8 +162,16 @@ fn draw_move_list(frame: &mut Frame, app: &App, area: Rect) {
             .add_modifier(Modifier::BOLD);
         let normal_style = Style::default().fg(app.theme.text_primary);
 
-        let white_style = if white_active { cursor_style } else { normal_style };
-        let black_style = if black_active { cursor_style } else { normal_style };
+        let white_style = if white_active {
+            cursor_style
+        } else {
+            normal_style
+        };
+        let black_style = if black_active {
+            cursor_style
+        } else {
+            normal_style
+        };
 
         // Pad black_san to fill remaining width for full-row highlight
         let row_width = area.width as usize;
@@ -173,7 +181,10 @@ fn draw_move_list(frame: &mut Frame, app: &App, area: Rect) {
         lines.push(Line::from(vec![
             Span::styled(format!("  {:<4}", format!("{}.", move_num)), num_style),
             Span::styled(format!("{:<10}", white_san), white_style),
-            Span::styled(format!("{:<width$}", black_san, width = black_width), black_style),
+            Span::styled(
+                format!("{:<width$}", black_san, width = black_width),
+                black_style,
+            ),
         ]));
     }
 

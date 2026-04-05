@@ -233,19 +233,14 @@ pub fn render_rounded_modal(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Renders a dim section header like: `── LABEL ──────────────`
-pub fn render_section_header(
-    buf: &mut Buffer,
-    area: Rect,
-    y: u16,
-    label: &str,
-    theme: &Theme,
-) {
+pub fn render_section_header(buf: &mut Buffer, area: Rect, y: u16, label: &str, theme: &Theme) {
     if y < area.y || y >= area.y + area.height {
         return;
     }
 
     // Detect if the cell already has a bg set (e.g. from a modal), and preserve it
-    let existing_bg = buf.cell((area.x, y))
+    let existing_bg = buf
+        .cell((area.x, y))
         .map(|c| c.bg)
         .unwrap_or(ratatui::style::Color::Reset);
     let style = Style::default().fg(theme.text_dim).bg(existing_bg);
@@ -399,7 +394,11 @@ impl Widget for TabBar<'_> {
 
         for (i, &tab) in self.tabs.iter().enumerate() {
             let is_active = i == self.active;
-            let style = if is_active { active_style } else { inactive_style };
+            let style = if is_active {
+                active_style
+            } else {
+                inactive_style
+            };
 
             // Padding before tab
             if i > 0 {

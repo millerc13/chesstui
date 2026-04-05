@@ -1,8 +1,8 @@
+use dashmap::DashMap;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::Mutex;
-use dashmap::DashMap;
 
 pub mod auth;
 pub mod db;
@@ -41,7 +41,10 @@ pub async fn run(
 
     // Run migrations — execute each statement individually
     tracing::info!("Running migrations...");
-    for path in &["./migrations/001_initial.sql", "./migrations/002_accounts.sql"] {
+    for path in &[
+        "./migrations/001_initial.sql",
+        "./migrations/002_accounts.sql",
+    ] {
         match tokio::fs::read_to_string(path).await {
             Ok(sql) => {
                 for statement in sql.split(';') {
@@ -59,7 +62,11 @@ pub async fn run(
                 }
             }
             Err(e) => {
-                tracing::warn!("Could not read migration {}: {} (tables may already exist)", path, e);
+                tracing::warn!(
+                    "Could not read migration {}: {} (tables may already exist)",
+                    path,
+                    e
+                );
             }
         }
     }

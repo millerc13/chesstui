@@ -3,18 +3,18 @@ use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::Frame;
 
+use super::board::ChessBoardWidget;
 use crate::app::{App, GameMode};
 use crate::game::state::{GameResult, GameStatus};
-use super::board::ChessBoardWidget;
 
 pub fn draw_postgame(frame: &mut Frame, app: &mut App) {
     let area = frame.area();
 
     let rows = Layout::vertical([
-        Constraint::Length(4),  // result banner
-        Constraint::Min(8),     // board + stats side by side
-        Constraint::Length(3),  // compact move list
-        Constraint::Length(4),  // action buttons
+        Constraint::Length(4), // result banner
+        Constraint::Min(8),    // board + stats side by side
+        Constraint::Length(3), // compact move list
+        Constraint::Length(4), // action buttons
     ])
     .split(area);
 
@@ -30,8 +30,15 @@ fn draw_result_banner(frame: &mut Frame, app: &App, area: Rect) {
     let (result_text, result_icon) = match app.game.status() {
         GameStatus::Finished(ref result) => match result {
             GameResult::Checkmate(color) => {
-                let icon = if *color == cozy_chess::Color::White { "♔" } else { "♚" };
-                (format!("{:?} WINS BY CHECKMATE", color).to_uppercase(), icon)
+                let icon = if *color == cozy_chess::Color::White {
+                    "♔"
+                } else {
+                    "♚"
+                };
+                (
+                    format!("{:?} WINS BY CHECKMATE", color).to_uppercase(),
+                    icon,
+                )
             }
             GameResult::Stalemate => ("GAME DRAWN - STALEMATE".to_string(), "="),
             GameResult::DrawByRepetition => ("GAME DRAWN - REPETITION".to_string(), "="),
@@ -46,51 +53,54 @@ fn draw_result_banner(frame: &mut Frame, app: &App, area: Rect) {
                 } else {
                     cozy_chess::Color::White
                 };
-                let icon = if winner == cozy_chess::Color::White { "♔" } else { "♚" };
-                (format!("{:?} WINS BY RESIGNATION", winner).to_uppercase(), icon)
+                let icon = if winner == cozy_chess::Color::White {
+                    "♔"
+                } else {
+                    "♚"
+                };
+                (
+                    format!("{:?} WINS BY RESIGNATION", winner).to_uppercase(),
+                    icon,
+                )
             }
         },
         GameStatus::InProgress => (app.status_message.clone().to_uppercase(), "?"),
     };
 
     let opponent_text = match &app.game_mode {
-        GameMode::VsAi(_) => {
-            match app.game.status() {
-                GameStatus::Finished(ref result) => match result {
-                    GameResult::Checkmate(color) => {
-                        if is_player_winner(app, *color) {
-                            "You defeated Computer".to_string()
-                        } else {
-                            "You lost to Computer".to_string()
-                        }
+        GameMode::VsAi(_) => match app.game.status() {
+            GameStatus::Finished(ref result) => match result {
+                GameResult::Checkmate(color) => {
+                    if is_player_winner(app, *color) {
+                        "You defeated Computer".to_string()
+                    } else {
+                        "You lost to Computer".to_string()
                     }
-                    GameResult::Resignation(color) => {
-                        if is_player_color(app, *color) {
-                            "You resigned against Computer".to_string()
-                        } else {
-                            "Computer resigned".to_string()
-                        }
+                }
+                GameResult::Resignation(color) => {
+                    if is_player_color(app, *color) {
+                        "You resigned against Computer".to_string()
+                    } else {
+                        "Computer resigned".to_string()
                     }
-                    _ => "Draw against Computer".to_string(),
-                },
-                _ => String::new(),
-            }
-        }
-        GameMode::Online { opponent_name, .. } => {
-            match app.game.status() {
-                GameStatus::Finished(ref result) => match result {
-                    GameResult::Checkmate(color) => {
-                        if is_player_winner(app, *color) {
-                            format!("You defeated {}", opponent_name)
-                        } else {
-                            format!("You lost to {}", opponent_name)
-                        }
+                }
+                _ => "Draw against Computer".to_string(),
+            },
+            _ => String::new(),
+        },
+        GameMode::Online { opponent_name, .. } => match app.game.status() {
+            GameStatus::Finished(ref result) => match result {
+                GameResult::Checkmate(color) => {
+                    if is_player_winner(app, *color) {
+                        format!("You defeated {}", opponent_name)
+                    } else {
+                        format!("You lost to {}", opponent_name)
                     }
-                    _ => format!("Draw against {}", opponent_name),
-                },
-                _ => String::new(),
-            }
-        }
+                }
+                _ => format!("Draw against {}", opponent_name),
+            },
+            _ => String::new(),
+        },
         GameMode::Local => "Local game".to_string(),
     };
 
@@ -124,7 +134,12 @@ fn draw_result_banner(frame: &mut Frame, app: &App, area: Rect) {
         let right_border_x = banner_area.x + banner_area.width - 1;
         // Fill with spaces
         let fill = " ".repeat(inner_w);
-        buf.set_string(banner_area.x + 1, banner_area.y + 1, &fill, Style::default());
+        buf.set_string(
+            banner_area.x + 1,
+            banner_area.y + 1,
+            &fill,
+            Style::default(),
+        );
         buf.set_string(content_x, banner_area.y + 1, &line1_content, text_style);
         buf.set_string(banner_area.x, banner_area.y + 1, "\u{2551}", border_style);
         buf.set_string(right_border_x, banner_area.y + 1, "\u{2551}", border_style);
@@ -136,7 +151,12 @@ fn draw_result_banner(frame: &mut Frame, app: &App, area: Rect) {
         let left_pad2 = pad2 / 2;
         let fill = " ".repeat(inner_w);
         let right_border_x = banner_area.x + banner_area.width - 1;
-        buf.set_string(banner_area.x + 1, banner_area.y + 2, &fill, Style::default());
+        buf.set_string(
+            banner_area.x + 1,
+            banner_area.y + 2,
+            &fill,
+            Style::default(),
+        );
         buf.set_string(
             banner_area.x + 1 + left_pad2 as u16,
             banner_area.y + 2,
@@ -173,11 +193,8 @@ fn is_player_color(app: &App, color: cozy_chess::Color) -> bool {
 // ── Board + Stats ─────────────────────────────────────────────────────────
 
 fn draw_board_and_stats(frame: &mut Frame, app: &App, area: Rect) {
-    let cols = Layout::horizontal([
-        Constraint::Percentage(65),
-        Constraint::Percentage(35),
-    ])
-    .split(area);
+    let cols =
+        Layout::horizontal([Constraint::Percentage(65), Constraint::Percentage(35)]).split(area);
 
     // Board
     let board_widget = ChessBoardWidget::new(app.game.board(), &app.theme)
@@ -218,7 +235,12 @@ fn draw_stats_panel(frame: &mut Frame, app: &App, area: Rect) {
     );
     buf.set_string(area.x, area.y, &top, border_style);
     // Re-draw title portion in bright style
-    buf.set_string(area.x + 1 + dashes_before as u16, area.y, title, title_style);
+    buf.set_string(
+        area.x + 1 + dashes_before as u16,
+        area.y,
+        title,
+        title_style,
+    );
 
     // Side borders and content rows
     let total_half_moves = app.game.move_history().len();
@@ -258,8 +280,7 @@ fn draw_stats_panel(frame: &mut Frame, app: &App, area: Rect) {
         // Label
         buf.set_string(area.x + 2, y, label, label_style);
         // Value right-aligned within the box
-        let value_x = (area.x + area.width)
-            .saturating_sub(2 + value.len() as u16);
+        let value_x = (area.x + area.width).saturating_sub(2 + value.len() as u16);
         buf.set_string(value_x, y, value, value_style);
         // Right border
         buf.set_string(area.x + area.width - 1, y, "\u{2502}", border_style);
@@ -280,10 +301,7 @@ fn draw_stats_panel(frame: &mut Frame, app: &App, area: Rect) {
 
     // Bottom border
     let bot_y = area.y + area.height.saturating_sub(1);
-    let bot = format!(
-        "\u{2514}{}\u{2518}",
-        "\u{2500}".repeat(inner_w)
-    );
+    let bot = format!("\u{2514}{}\u{2518}", "\u{2500}".repeat(inner_w));
     buf.set_string(area.x, bot_y, &bot, border_style);
 }
 
@@ -317,7 +335,12 @@ fn draw_compact_moves(frame: &mut Frame, app: &App, area: Rect) {
         "\u{2500}".repeat(dashes_after)
     );
     buf.set_string(area.x, area.y, &top, border_style);
-    buf.set_string(area.x + 1 + dashes_before as u16, area.y, title, title_style);
+    buf.set_string(
+        area.x + 1 + dashes_before as u16,
+        area.y,
+        title,
+        title_style,
+    );
 
     // Content row: build compact move string
     let y = area.y + 1;
@@ -345,7 +368,10 @@ fn draw_compact_moves(frame: &mut Frame, app: &App, area: Rect) {
 
     // Truncate if needed
     let display_moves = if move_text.chars().count() > max_move_len {
-        let truncated: String = move_text.chars().take(max_move_len.saturating_sub(3)).collect();
+        let truncated: String = move_text
+            .chars()
+            .take(max_move_len.saturating_sub(3))
+            .collect();
         format!("{}...", truncated)
     } else {
         move_text.trim().to_string()
@@ -360,10 +386,7 @@ fn draw_compact_moves(frame: &mut Frame, app: &App, area: Rect) {
     // Bottom border
     let bot_y = area.y + 2;
     if bot_y < area.y + area.height {
-        let bot = format!(
-            "\u{2514}{}\u{2518}",
-            "\u{2500}".repeat(inner_w)
-        );
+        let bot = format!("\u{2514}{}\u{2518}", "\u{2500}".repeat(inner_w));
         buf.set_string(area.x, bot_y, &bot, border_style);
     }
 }
@@ -415,9 +438,25 @@ fn draw_simple_button(
     }
 
     let (tl, tr, bl, br, hz, vt, border_color) = if selected {
-        ('\u{2554}', '\u{2557}', '\u{255a}', '\u{255d}', '\u{2550}', '\u{2551}', theme.accent)
+        (
+            '\u{2554}',
+            '\u{2557}',
+            '\u{255a}',
+            '\u{255d}',
+            '\u{2550}',
+            '\u{2551}',
+            theme.accent,
+        )
     } else {
-        ('\u{250c}', '\u{2510}', '\u{2514}', '\u{2518}', '\u{2500}', '\u{2502}', theme.border_dim)
+        (
+            '\u{250c}',
+            '\u{2510}',
+            '\u{2514}',
+            '\u{2518}',
+            '\u{2500}',
+            '\u{2502}',
+            theme.border_dim,
+        )
     };
 
     let border_style = Style::default().fg(border_color);

@@ -2,7 +2,7 @@ use cozy_chess::{Board, Color, Move, Piece, Square};
 
 use crate::config::PieceStyle;
 use crate::game::replay::{self, SavedGame};
-use crate::game::state::{GameState, GameStatus, GameResult};
+use crate::game::state::{GameResult, GameState, GameStatus};
 use crate::theme::{ColorScheme, Theme};
 
 #[derive(Default, Clone)]
@@ -121,7 +121,11 @@ impl PlayMenuItem {
     }
 
     pub fn tag(&self) -> Option<&'static str> {
-        if self.is_available() { None } else { Some("Soon") }
+        if self.is_available() {
+            None
+        } else {
+            Some("Soon")
+        }
     }
 }
 
@@ -288,11 +292,15 @@ pub struct App {
 impl App {
     pub fn new() -> Self {
         let config = crate::config::Config::load();
-        let piece_style = config.piece_style
+        let piece_style = config
+            .piece_style
             .as_deref()
             .and_then(PieceStyle::from_name)
             .unwrap_or_default();
-        let settings_style_index = PieceStyle::ALL.iter().position(|&s| s == piece_style).unwrap_or(0);
+        let settings_style_index = PieceStyle::ALL
+            .iter()
+            .position(|&s| s == piece_style)
+            .unwrap_or(0);
 
         let initial_screen = if config.color_scheme.is_some() {
             Screen::Launch
@@ -452,7 +460,8 @@ impl App {
             if self.game.side_to_move() == ai_color {
                 if let GameStatus::InProgress = self.game.status() {
                     if self.ai_move_at.is_none() {
-                        self.ai_move_at = Some(std::time::Instant::now() + std::time::Duration::from_millis(300));
+                        self.ai_move_at =
+                            Some(std::time::Instant::now() + std::time::Duration::from_millis(300));
                     }
                 }
             }
@@ -534,7 +543,12 @@ impl App {
 
     pub fn make_move(&mut self, mv: Move) {
         // For online games, send the move to the server instead of applying locally
-        if let GameMode::Online { ref game_id, my_color, .. } = self.game_mode {
+        if let GameMode::Online {
+            ref game_id,
+            my_color,
+            ..
+        } = self.game_mode
+        {
             if self.game.side_to_move() != my_color {
                 self.status_message = "Not your turn".to_string();
                 return;
@@ -641,7 +655,9 @@ impl App {
 
     pub fn jump_to_next_piece(&mut self, forward: bool) {
         let pieces = self.movable_pieces();
-        if pieces.is_empty() { return; }
+        if pieces.is_empty() {
+            return;
+        }
         let cur = self.cursor_square();
         let idx = pieces.iter().position(|&s| s == cur);
         let next = match idx {
@@ -659,7 +675,9 @@ impl App {
 
     pub fn jump_between_pieces(&mut self, df: i8, dr: i8) {
         let pieces = self.movable_pieces();
-        if pieces.is_empty() { return; }
+        if pieces.is_empty() {
+            return;
+        }
         let cur = self.cursor_square();
         let cf = cur.file() as i8;
         let cr = cur.rank() as i8;
@@ -671,11 +689,11 @@ impl App {
     }
 
     pub fn jump_between_destinations(&mut self, df: i8, dr: i8) {
-        let destinations: Vec<Square> = self.legal_moves_for_selected
-            .iter()
-            .map(|m| m.to)
-            .collect();
-        if destinations.is_empty() { return; }
+        let destinations: Vec<Square> =
+            self.legal_moves_for_selected.iter().map(|m| m.to).collect();
+        if destinations.is_empty() {
+            return;
+        }
         let cur = self.cursor_square();
         let cf = cur.file() as i8;
         let cr = cur.rank() as i8;
@@ -686,7 +704,13 @@ impl App {
         }
     }
 
-    fn find_nearest_in_direction(candidates: &[Square], cf: i8, cr: i8, df: i8, dr: i8) -> Option<Square> {
+    fn find_nearest_in_direction(
+        candidates: &[Square],
+        cf: i8,
+        cr: i8,
+        df: i8,
+        dr: i8,
+    ) -> Option<Square> {
         let mut best: Option<(Square, i8)> = None;
         for &sq in candidates {
             let sf = sq.file() as i8;
@@ -694,7 +718,9 @@ impl App {
             let delta_f = sf - cf;
             let delta_r = sr - cr;
             // Skip current position
-            if delta_f == 0 && delta_r == 0 { continue; }
+            if delta_f == 0 && delta_r == 0 {
+                continue;
+            }
 
             // Check direction match
             let matches = if df != 0 && dr == 0 {
@@ -708,7 +734,9 @@ impl App {
                 (df == 0 || delta_f.signum() == df) && (dr == 0 || delta_r.signum() == dr)
             };
 
-            if !matches { continue; }
+            if !matches {
+                continue;
+            }
 
             let dist = delta_f.abs() + delta_r.abs();
             if best.is_none() || dist < best.unwrap().1 {
@@ -772,7 +800,11 @@ impl App {
         self.game = GameState::new();
         self.game_start_time = Some(std::time::Instant::now());
         self.board_flipped = my_color == Color::Black;
-        self.game_mode = GameMode::Online { game_id, my_color, opponent_name };
+        self.game_mode = GameMode::Online {
+            game_id,
+            my_color,
+            opponent_name,
+        };
         self.screen = Screen::InGame;
         self.mode = InputMode::Play;
         self.cursor_file = 4;

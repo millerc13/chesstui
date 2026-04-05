@@ -4,10 +4,10 @@
 use cozy_chess::{Color as ChessColor, Move, Piece, Square};
 use image::{ImageBuffer, Rgb, RgbImage};
 
-use crate::config::PieceStyle;
-use crate::theme::Theme;
 use super::pieces;
 use super::sprites;
+use crate::config::PieceStyle;
+use crate::theme::Theme;
 
 /// Generate a full board image at the given pixel dimensions.
 /// Each square is sq_px × sq_px pixels. Total image is 8*sq_px × 8*sq_px.
@@ -30,7 +30,9 @@ pub fn render_board_image(
         let side = board.side_to_move();
         let kings = board.pieces(Piece::King) & board.colors(side);
         let mut sq = None;
-        for s in kings { sq = Some(s); }
+        for s in kings {
+            sq = Some(s);
+        }
         sq
     } else {
         None
@@ -47,11 +49,26 @@ pub fn render_board_image(
             let is_light = (file + rank) % 2 != 0;
 
             // Determine square background color
-            let sq_bg = highlight_color(file, rank, sq, theme, flipped, cursor, selected, legal_moves, last_move, in_check, king_square)
-                .unwrap_or_else(|| {
-                    if is_light { color_to_rgb_tuple(theme.light_square) }
-                    else { color_to_rgb_tuple(theme.dark_square) }
-                });
+            let sq_bg = highlight_color(
+                file,
+                rank,
+                sq,
+                theme,
+                flipped,
+                cursor,
+                selected,
+                legal_moves,
+                last_move,
+                in_check,
+                king_square,
+            )
+            .unwrap_or_else(|| {
+                if is_light {
+                    color_to_rgb_tuple(theme.light_square)
+                } else {
+                    color_to_rgb_tuple(theme.dark_square)
+                }
+            });
 
             let px_x = dc as u32 * sq_px;
             let px_y = dr as u32 * sq_px;
@@ -71,7 +88,13 @@ pub fn render_board_image(
                 stamp_piece(&mut img, piece_img, px_x, px_y, sq_px, sq_bg);
             } else if selected.is_some() && legal_moves.iter().any(|m| m.to == sq) {
                 // Draw legal move dot
-                draw_dot(&mut img, px_x, px_y, sq_px, color_to_rgb_tuple(theme.accent));
+                draw_dot(
+                    &mut img,
+                    px_x,
+                    px_y,
+                    sq_px,
+                    color_to_rgb_tuple(theme.accent),
+                );
             }
         }
     }
@@ -81,12 +104,15 @@ pub fn render_board_image(
 
 /// Render a preview image showing all 12 pieces (2 rows × 6 columns).
 /// Top row: white pieces (K Q R B N P), bottom row: black pieces.
-pub fn render_piece_preview(
-    theme: &Theme,
-    sq_px: u32,
-    style: PieceStyle,
-) -> RgbImage {
-    let pieces = [Piece::King, Piece::Queen, Piece::Rook, Piece::Bishop, Piece::Knight, Piece::Pawn];
+pub fn render_piece_preview(theme: &Theme, sq_px: u32, style: PieceStyle) -> RgbImage {
+    let pieces = [
+        Piece::King,
+        Piece::Queen,
+        Piece::Rook,
+        Piece::Bishop,
+        Piece::Knight,
+        Piece::Pawn,
+    ];
     let cache = PieceCache::new(sq_px, theme, style);
 
     let width = sq_px * 6;
@@ -94,7 +120,11 @@ pub fn render_piece_preview(
     let mut img = ImageBuffer::new(width, height);
 
     for row in 0..2u32 {
-        let color = if row == 0 { ChessColor::White } else { ChessColor::Black };
+        let color = if row == 0 {
+            ChessColor::White
+        } else {
+            ChessColor::Black
+        };
         for col in 0..6u32 {
             let is_light = (row + col) % 2 == 0;
             let bg = if is_light {
@@ -183,7 +213,14 @@ pub struct PieceCache {
 
 impl PieceCache {
     pub fn new(sq_px: u32, theme: &Theme, style: PieceStyle) -> Self {
-        let pieces = [Piece::King, Piece::Queen, Piece::Rook, Piece::Bishop, Piece::Knight, Piece::Pawn];
+        let pieces = [
+            Piece::King,
+            Piece::Queen,
+            Piece::Rook,
+            Piece::Bishop,
+            Piece::Knight,
+            Piece::Pawn,
+        ];
         let colors = [ChessColor::White, ChessColor::Black];
         let mut images = Vec::with_capacity(12);
 
@@ -204,7 +241,11 @@ impl PieceCache {
             }
         }
 
-        Self { images, sq_px, style }
+        Self {
+            images,
+            sq_px,
+            style,
+        }
     }
 
     pub fn get(&self, piece: Piece, color: ChessColor) -> &RgbImage {
@@ -225,7 +266,9 @@ impl PieceCache {
 
 fn render_piece_image(piece: Piece, sq_px: u32, base_color: ratatui::style::Color) -> RgbImage {
     let size = (sq_px as f64 * 0.85) as u32; // piece occupies 85% of square
-    if size < 4 { return ImageBuffer::new(1, 1); }
+    if size < 4 {
+        return ImageBuffer::new(1, 1);
+    }
 
     let profile = pieces::get_profile(piece);
     let base_rgb = pieces::color_to_rgb(base_color);
@@ -264,13 +307,19 @@ fn render_piece_image(piece: Piece, sq_px: u32, base_color: ratatui::style::Colo
     for ti in 0..theta_steps {
         let t = ti as f64 / theta_steps as f64;
         let (r, y_local, seg) = interpolate_profile(profile, &lengths, t);
-        if r < 1e-6 { continue; }
+        if r < 1e-6 {
+            continue;
+        }
 
         let next = (seg + 1).min(profile.len() - 1);
         let dr = profile[next].0 - profile[seg].0;
         let dy = profile[next].1 - profile[seg].1;
         let tang_len = (dr * dr + dy * dy).sqrt();
-        let (nr_p, ny_p) = if tang_len > 1e-9 { (dy / tang_len, -dr / tang_len) } else { (1.0, 0.0) };
+        let (nr_p, ny_p) = if tang_len > 1e-9 {
+            (dy / tang_len, -dr / tang_len)
+        } else {
+            (1.0, 0.0)
+        };
 
         let y = y_local - y_center;
 
@@ -298,13 +347,17 @@ fn render_piece_image(piece: Piece, sq_px: u32, base_color: ratatui::style::Colo
             let nz2 = -nx1 * sin_b + nz1 * cos_b;
 
             let denom = z2 + k2;
-            if denom < 0.5 { continue; }
+            if denom < 0.5 {
+                continue;
+            }
             let ooz = 1.0 / denom;
 
             let xp = (w as f64 / 2.0 + scale * ooz * x2) as i32;
             let yp = (h as f64 / 2.0 - scale * ooz * y2) as i32;
 
-            if xp < 0 || xp >= w as i32 || yp < 0 || yp >= h as i32 { continue; }
+            if xp < 0 || xp >= w as i32 || yp < 0 || yp >= h as i32 {
+                continue;
+            }
             let (xi, yi) = (xp as usize, yp as usize);
 
             if ooz > zbuffer[yi][xi] {
@@ -329,13 +382,22 @@ fn render_piece_image(piece: Piece, sq_px: u32, base_color: ratatui::style::Colo
     let mut edge = vec![vec![false; w]; h];
     for y in 0..h {
         for x in 0..w {
-            if !filled[y][x] { continue; }
+            if !filled[y][x] {
+                continue;
+            }
             'outer: for dy in -1..=1_i32 {
                 for dx in -1..=1_i32 {
-                    if dx == 0 && dy == 0 { continue; }
+                    if dx == 0 && dy == 0 {
+                        continue;
+                    }
                     let nx = x as i32 + dx;
                     let ny = y as i32 + dy;
-                    if nx < 0 || nx >= w as i32 || ny < 0 || ny >= h as i32 || !filled[ny as usize][nx as usize] {
+                    if nx < 0
+                        || nx >= w as i32
+                        || ny < 0
+                        || ny >= h as i32
+                        || !filled[ny as usize][nx as usize]
+                    {
                         edge[y][x] = true;
                         break 'outer;
                     }
@@ -415,11 +477,11 @@ fn load_and_resize_sprite(png_bytes: &[u8], sq_px: u32, style: PieceStyle) -> Rg
         if pixel[3] < 128 {
             rgb.put_pixel(x, y, Rgb([0, 0, 0]));
         } else {
-            rgb.put_pixel(x, y, Rgb([
-                pixel[0].max(2),
-                pixel[1].max(2),
-                pixel[2].max(2),
-            ]));
+            rgb.put_pixel(
+                x,
+                y,
+                Rgb([pixel[0].max(2), pixel[1].max(2), pixel[2].max(2)]),
+            );
         }
     }
     rgb
@@ -443,22 +505,40 @@ fn interpolate_profile(profile: &[(f64, f64)], lengths: &[f64], t: f64) -> (f64,
     let target = (t * total).min(total - 1e-9);
     let mut seg = 0;
     for i in 1..lengths.len() {
-        if lengths[i] >= target { seg = i - 1; break; }
+        if lengths[i] >= target {
+            seg = i - 1;
+            break;
+        }
     }
     let next = (seg + 1).min(profile.len() - 1);
     let seg_start = lengths[seg];
     let seg_end = lengths[next];
     let seg_len = seg_end - seg_start;
-    let frac = if seg_len > 1e-9 { (target - seg_start) / seg_len } else { 0.0 };
+    let frac = if seg_len > 1e-9 {
+        (target - seg_start) / seg_len
+    } else {
+        0.0
+    };
     let r = profile[seg].0 + frac * (profile[next].0 - profile[seg].0);
     let y = profile[seg].1 + frac * (profile[next].1 - profile[seg].1);
     (r, y, seg)
 }
 
 fn get_piece(board: &cozy_chess::Board, sq: Square) -> Option<(Piece, ChessColor)> {
-    for piece in [Piece::King, Piece::Queen, Piece::Rook, Piece::Bishop, Piece::Knight, Piece::Pawn] {
+    for piece in [
+        Piece::King,
+        Piece::Queen,
+        Piece::Rook,
+        Piece::Bishop,
+        Piece::Knight,
+        Piece::Pawn,
+    ] {
         if board.pieces(piece).has(sq) {
-            let color = if board.colors(ChessColor::White).has(sq) { ChessColor::White } else { ChessColor::Black };
+            let color = if board.colors(ChessColor::White).has(sq) {
+                ChessColor::White
+            } else {
+                ChessColor::Black
+            };
             return Some((piece, color));
         }
     }
@@ -466,24 +546,39 @@ fn get_piece(board: &cozy_chess::Board, sq: Square) -> Option<(Piece, ChessColor
 }
 
 fn highlight_color(
-    file: u8, rank: u8, sq: Square,
-    theme: &Theme, flipped: bool,
-    cursor: Option<(u8, u8)>, selected: Option<Square>,
-    legal_moves: &[Move], last_move: Option<(Square, Square)>,
-    in_check: bool, king_square: Option<Square>,
+    file: u8,
+    rank: u8,
+    sq: Square,
+    theme: &Theme,
+    flipped: bool,
+    cursor: Option<(u8, u8)>,
+    selected: Option<Square>,
+    legal_moves: &[Move],
+    last_move: Option<(Square, Square)>,
+    in_check: bool,
+    king_square: Option<Square>,
 ) -> Option<(u8, u8, u8)> {
     if in_check {
         if let Some(ksq) = king_square {
-            if sq == ksq { return Some(color_to_rgb_tuple(theme.check_bg)); }
+            if sq == ksq {
+                return Some(color_to_rgb_tuple(theme.check_bg));
+            }
         }
     }
     if let Some((cf, cr)) = cursor {
         let (f, r) = if flipped { (7 - cf, 7 - cr) } else { (cf, cr) };
-        let csq = Square::new(cozy_chess::File::index(f as usize), cozy_chess::Rank::index(r as usize));
-        if sq == csq { return Some(color_to_rgb_tuple(theme.cursor_bg)); }
+        let csq = Square::new(
+            cozy_chess::File::index(f as usize),
+            cozy_chess::Rank::index(r as usize),
+        );
+        if sq == csq {
+            return Some(color_to_rgb_tuple(theme.cursor_bg));
+        }
     }
     if let Some(sel) = selected {
-        if sq == sel { return Some(color_to_rgb_tuple(theme.selected_bg)); }
+        if sq == sel {
+            return Some(color_to_rgb_tuple(theme.selected_bg));
+        }
     }
     if selected.is_some() && legal_moves.iter().any(|m| m.to == sq) {
         return Some(color_to_rgb_tuple(theme.legal_move_bg));
@@ -491,7 +586,11 @@ fn highlight_color(
     if let Some((from, to)) = last_move {
         if sq == from || sq == to {
             let is_light = (file + rank) % 2 != 0;
-            return Some(color_to_rgb_tuple(if is_light { theme.last_move_light } else { theme.last_move_dark }));
+            return Some(color_to_rgb_tuple(if is_light {
+                theme.last_move_light
+            } else {
+                theme.last_move_dark
+            }));
         }
     }
     None

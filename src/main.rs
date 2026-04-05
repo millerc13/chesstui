@@ -1,6 +1,6 @@
 use clap::Parser;
 use crossterm::{
-    event::{EnableMouseCapture, DisableMouseCapture},
+    event::{DisableMouseCapture, EnableMouseCapture},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -9,7 +9,11 @@ use std::io;
 use std::time::{Duration, Instant};
 
 #[derive(Parser)]
-#[command(name = "chesstui", version, about = "Multiplayer chess in the terminal")]
+#[command(
+    name = "chesstui",
+    version,
+    about = "Multiplayer chess in the terminal"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Option<Command>,
@@ -35,7 +39,11 @@ fn main() -> io::Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Some(Command::Server { bind, database_url, resend_api_key }) => {
+        Some(Command::Server {
+            bind,
+            database_url,
+            resend_api_key,
+        }) => {
             let rt = tokio::runtime::Runtime::new()?;
             rt.block_on(chesstui::server::run(bind, database_url, resend_api_key))
                 .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))
@@ -56,7 +64,11 @@ fn run_tui() -> io::Result<()> {
     let result = run_app(&mut terminal, &mut app);
 
     disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen, DisableMouseCapture)?;
+    execute!(
+        terminal.backend_mut(),
+        LeaveAlternateScreen,
+        DisableMouseCapture
+    )?;
     terminal.show_cursor()?;
 
     if let Err(err) = result {
@@ -90,7 +102,10 @@ fn run_app(
         }
 
         // Screens with animation need continuous redraws
-        if matches!(app.screen, chesstui::app::Screen::Launch | chesstui::app::Screen::ColorPicker) {
+        if matches!(
+            app.screen,
+            chesstui::app::Screen::Launch | chesstui::app::Screen::ColorPicker
+        ) {
             needs_redraw = true;
         }
 
@@ -179,7 +194,11 @@ fn poll_network(app: &mut chesstui::app::App) -> bool {
             ServerMessage::Searching => {
                 app.multiplayer_state = MultiplayerState::Searching;
             }
-            ServerMessage::GameStart { game_id, opponent, my_color } => {
+            ServerMessage::GameStart {
+                game_id,
+                opponent,
+                my_color,
+            } => {
                 let color = if my_color == "white" {
                     cozy_chess::Color::White
                 } else {

@@ -69,10 +69,7 @@ impl Widget for CommandBarWidget<'_> {
                 &input_text,
                 Style::default().fg(theme.text_bright),
             ));
-            left_spans.push(Span::styled(
-                "\u{258f}",
-                Style::default().fg(theme.accent),
-            ));
+            left_spans.push(Span::styled("\u{258f}", Style::default().fg(theme.accent)));
         }
 
         // Build right side: Turn N · White to move

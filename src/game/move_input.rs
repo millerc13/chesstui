@@ -1,5 +1,5 @@
-use cozy_chess::{Board, Move, Piece, Square};
 use crate::game::notation::to_algebraic;
+use cozy_chess::{Board, Move, Piece, Square};
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Public types
@@ -210,9 +210,14 @@ impl MoveInputParser {
 
         // If multiple matches are all promotions and no suffix given, default to queen
         if matches.len() > 1 && promo_piece.is_none() {
-            let all_promos = matches.iter().all(|&i| self.legal_moves[i].0.promotion.is_some());
+            let all_promos = matches
+                .iter()
+                .all(|&i| self.legal_moves[i].0.promotion.is_some());
             if all_promos {
-                if let Some(&qi) = matches.iter().find(|&&i| self.legal_moves[i].0.promotion == Some(Piece::Queen)) {
+                if let Some(&qi) = matches
+                    .iter()
+                    .find(|&&i| self.legal_moves[i].0.promotion == Some(Piece::Queen))
+                {
                     return Some(InputResult::Exact(self.legal_moves[qi].0));
                 }
             }

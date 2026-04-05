@@ -4,8 +4,8 @@ use ratatui::layout::{Position, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::widgets::Widget;
 
-use crate::theme::Theme;
 use super::pieces;
+use crate::theme::Theme;
 
 fn put(buf: &mut Buffer, area: Rect, x: u16, y: u16, c: char, style: Style) {
     if x >= area.x && y >= area.y && x < area.x + area.width && y < area.y + area.height {
@@ -52,28 +52,59 @@ impl<'a> ChessBoardWidget<'a> {
             let side = board.side_to_move();
             let kings = board.pieces(Piece::King) & board.colors(side);
             let mut sq = None;
-            for s in kings { sq = Some(s); }
+            for s in kings {
+                sq = Some(s);
+            }
             sq
         } else {
             None
         };
 
         Self {
-            board, theme, flipped: false, cursor: None, selected: None,
-            legal_moves: &[], last_move: None, in_check, king_square,
+            board,
+            theme,
+            flipped: false,
+            cursor: None,
+            selected: None,
+            legal_moves: &[],
+            last_move: None,
+            in_check,
+            king_square,
             show_move_hints: false,
         }
     }
 
-    pub fn flipped(mut self, flipped: bool) -> Self { self.flipped = flipped; self }
-    pub fn cursor(mut self, file: u8, rank: u8) -> Self { self.cursor = Some((file, rank)); self }
-    pub fn selected(mut self, sq: Option<Square>) -> Self { self.selected = sq; self }
-    pub fn legal_moves(mut self, moves: &'a [Move]) -> Self { self.legal_moves = moves; self }
-    pub fn last_move(mut self, lm: Option<(Square, Square)>) -> Self { self.last_move = lm; self }
-    pub fn show_move_hints(mut self, show: bool) -> Self { self.show_move_hints = show; self }
+    pub fn flipped(mut self, flipped: bool) -> Self {
+        self.flipped = flipped;
+        self
+    }
+    pub fn cursor(mut self, file: u8, rank: u8) -> Self {
+        self.cursor = Some((file, rank));
+        self
+    }
+    pub fn selected(mut self, sq: Option<Square>) -> Self {
+        self.selected = sq;
+        self
+    }
+    pub fn legal_moves(mut self, moves: &'a [Move]) -> Self {
+        self.legal_moves = moves;
+        self
+    }
+    pub fn last_move(mut self, lm: Option<(Square, Square)>) -> Self {
+        self.last_move = lm;
+        self
+    }
+    pub fn show_move_hints(mut self, show: bool) -> Self {
+        self.show_move_hints = show;
+        self
+    }
 
     fn display_to_chess(&self, dc: u8, dr: u8) -> (u8, u8) {
-        if self.flipped { (7 - dc, dr) } else { (dc, 7 - dr) }
+        if self.flipped {
+            (7 - dc, dr)
+        } else {
+            (dc, 7 - dr)
+        }
     }
 }
 
@@ -126,8 +157,8 @@ impl Widget for ChessBoardWidget<'_> {
 
                 let is_light = (file + rank) % 2 != 0;
                 let highlight = self.highlight_bg(file, rank, sq);
-                let is_legal = self.selected.is_some()
-                    && self.legal_moves.iter().any(|m| m.to == sq);
+                let is_legal =
+                    self.selected.is_some() && self.legal_moves.iter().any(|m| m.to == sq);
 
                 let sq_bg = match highlight {
                     Some(bg) => bg,
@@ -212,7 +243,9 @@ impl ChessBoardWidget<'_> {
     fn highlight_bg(&self, file: u8, rank: u8, sq: Square) -> Option<Color> {
         if self.in_check {
             if let Some(king_sq) = self.king_square {
-                if sq == king_sq { return Some(self.theme.check_bg); }
+                if sq == king_sq {
+                    return Some(self.theme.check_bg);
+                }
             }
         }
 
@@ -226,11 +259,15 @@ impl ChessBoardWidget<'_> {
                 cozy_chess::File::index(chess_f as usize),
                 cozy_chess::Rank::index(chess_r as usize),
             );
-            if sq == cursor_sq { return Some(self.theme.cursor_bg); }
+            if sq == cursor_sq {
+                return Some(self.theme.cursor_bg);
+            }
         }
 
         if let Some(sel) = self.selected {
-            if sq == sel { return Some(self.theme.selected_bg); }
+            if sq == sel {
+                return Some(self.theme.selected_bg);
+            }
         }
 
         if self.selected.is_some() && self.legal_moves.iter().any(|m| m.to == sq) {
@@ -252,7 +289,14 @@ impl ChessBoardWidget<'_> {
     }
 
     fn get_piece(&self, sq: Square) -> Option<(Piece, ChessColor)> {
-        for piece in [Piece::King, Piece::Queen, Piece::Rook, Piece::Bishop, Piece::Knight, Piece::Pawn] {
+        for piece in [
+            Piece::King,
+            Piece::Queen,
+            Piece::Rook,
+            Piece::Bishop,
+            Piece::Knight,
+            Piece::Pawn,
+        ] {
             if self.board.pieces(piece).has(sq) {
                 let color = if self.board.colors(ChessColor::White).has(sq) {
                     ChessColor::White

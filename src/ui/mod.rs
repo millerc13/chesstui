@@ -1,27 +1,27 @@
 pub mod ascii3d;
 pub mod board;
 pub mod board_image;
-pub mod friends;
-pub mod kitty_transmit;
 pub mod captured;
-pub mod debug_panel;
-#[allow(dead_code)]
-pub mod pieces;
 pub mod color_picker;
-pub mod launch;
 pub mod command_bar;
+pub mod debug_panel;
+pub mod friends;
 pub mod game;
 pub mod help;
+pub mod kitty_transmit;
+pub mod launch;
 pub mod menu;
 pub mod move_list;
 pub mod multiplayer;
-pub mod sprites;
-pub mod widgets;
+#[allow(dead_code)]
+pub mod pieces;
 pub mod postgame;
 pub mod replay_viewer;
+pub mod sprites;
+pub mod widgets;
 
-use ratatui::Frame;
 use crate::app::{App, Screen};
+use ratatui::Frame;
 
 pub fn draw(frame: &mut Frame, app: &mut App) {
     match app.screen {

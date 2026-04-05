@@ -13,8 +13,7 @@ pub fn to_algebraic(board: &Board, mv: &Move) -> String {
         return castle;
     }
 
-    let piece = piece_on(board, mv.from)
-        .expect("to_algebraic: no piece on source square");
+    let piece = piece_on(board, mv.from).expect("to_algebraic: no piece on source square");
 
     let mut s = String::new();
 
@@ -100,12 +99,8 @@ pub fn parse_san(board: &Board, san: &str) -> Option<Move> {
     let dest_rank: Rank;
     let mut promotion: Option<Piece> = None;
 
-    let parse_file = |c: char| -> File {
-        File::index((c as u8 - b'a') as usize)
-    };
-    let parse_rank = |c: char| -> Rank {
-        Rank::index((c as u8 - b'1') as usize)
-    };
+    let parse_file = |c: char| -> File { File::index((c as u8 - b'a') as usize) };
+    let parse_rank = |c: char| -> Rank { Rank::index((c as u8 - b'1') as usize) };
     let parse_piece = |c: char| -> Piece {
         match c {
             'N' => Piece::Knight,
@@ -347,9 +342,7 @@ fn disambiguate(board: &Board, mv: &Move, piece: Piece) -> String {
     }
 
     // Check whether file alone is unique among ambiguous pieces
-    let same_file = ambiguous
-        .iter()
-        .any(|c| c.from.file() == mv.from.file());
+    let same_file = ambiguous.iter().any(|c| c.from.file() == mv.from.file());
 
     if !same_file {
         // File is unique → use only file
@@ -357,9 +350,7 @@ fn disambiguate(board: &Board, mv: &Move, piece: Piece) -> String {
     }
 
     // Check whether rank alone is unique
-    let same_rank = ambiguous
-        .iter()
-        .any(|c| c.from.rank() == mv.from.rank());
+    let same_rank = ambiguous.iter().any(|c| c.from.rank() == mv.from.rank());
 
     if !same_rank {
         // Rank is unique → use only rank

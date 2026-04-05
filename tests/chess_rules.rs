@@ -1,4 +1,4 @@
-use chesstui::game::state::{GameState, GameStatus, GameResult};
+use chesstui::game::state::{GameResult, GameState, GameStatus};
 
 #[test]
 fn new_game_starts_with_white_to_move() {
@@ -39,7 +39,10 @@ fn captured_pieces_are_tracked() {
     make_uci(&mut game, "g8f6");
     make_uci(&mut game, "h5f7"); // Qxf7#
     assert_eq!(game.captured_by(cozy_chess::Color::White).len(), 1);
-    assert_eq!(game.status(), GameStatus::Finished(GameResult::Checkmate(cozy_chess::Color::White)));
+    assert_eq!(
+        game.status(),
+        GameStatus::Finished(GameResult::Checkmate(cozy_chess::Color::White))
+    );
 }
 
 #[test]
@@ -56,10 +59,19 @@ fn undo_restores_previous_position() {
     assert_eq!(game.side_to_move(), cozy_chess::Color::White);
 }
 
-fn find_move(_game: &GameState, from: &str, to: &str, promo: Option<cozy_chess::Piece>) -> cozy_chess::Move {
+fn find_move(
+    _game: &GameState,
+    from: &str,
+    to: &str,
+    promo: Option<cozy_chess::Piece>,
+) -> cozy_chess::Move {
     let from_sq = from.parse::<cozy_chess::Square>().unwrap();
     let to_sq = to.parse::<cozy_chess::Square>().unwrap();
-    cozy_chess::Move { from: from_sq, to: to_sq, promotion: promo }
+    cozy_chess::Move {
+        from: from_sq,
+        to: to_sq,
+        promotion: promo,
+    }
 }
 
 fn make_uci(game: &mut GameState, uci: &str) {
@@ -78,5 +90,6 @@ fn make_uci(game: &mut GameState, uci: &str) {
         None
     };
     let mv = find_move(game, &from, &to, promo);
-    game.try_make_move(mv).expect(&format!("Move {} should be legal", uci));
+    game.try_make_move(mv)
+        .expect(&format!("Move {} should be legal", uci));
 }

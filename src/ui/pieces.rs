@@ -7,65 +7,186 @@ use ratatui::style::{Color, Style};
 // Same profiles as ascii3d.rs rotating pieces, tuned for recognizable shapes.
 
 const KING_PROFILE: &[(f64, f64)] = &[
-    (0.0, 0.0), (3.2, 0.0), (3.4, 0.05), (3.4, 0.3), (3.2, 0.45), (2.8, 0.55),
-    (2.2, 0.8), (1.8, 1.1), (1.5, 1.4), (1.3, 1.7),
-    (1.2, 2.0), (1.15, 2.5), (1.15, 3.0), (1.2, 3.2),
-    (1.5, 3.4), (2.0, 3.6), (2.5, 3.8), (2.8, 4.0), (2.8, 4.15),
-    (2.7, 4.3), (2.4, 4.5), (2.0, 4.7), (1.5, 4.9),
-    (1.0, 5.1), (0.8, 5.2),
-    (1.6, 5.3), (1.6, 5.4), (0.8, 5.5),
-    (0.5, 5.6), (0.5, 6.0), (0.3, 6.1), (0.0, 6.1),
+    (0.0, 0.0),
+    (3.2, 0.0),
+    (3.4, 0.05),
+    (3.4, 0.3),
+    (3.2, 0.45),
+    (2.8, 0.55),
+    (2.2, 0.8),
+    (1.8, 1.1),
+    (1.5, 1.4),
+    (1.3, 1.7),
+    (1.2, 2.0),
+    (1.15, 2.5),
+    (1.15, 3.0),
+    (1.2, 3.2),
+    (1.5, 3.4),
+    (2.0, 3.6),
+    (2.5, 3.8),
+    (2.8, 4.0),
+    (2.8, 4.15),
+    (2.7, 4.3),
+    (2.4, 4.5),
+    (2.0, 4.7),
+    (1.5, 4.9),
+    (1.0, 5.1),
+    (0.8, 5.2),
+    (1.6, 5.3),
+    (1.6, 5.4),
+    (0.8, 5.5),
+    (0.5, 5.6),
+    (0.5, 6.0),
+    (0.3, 6.1),
+    (0.0, 6.1),
 ];
 
 const QUEEN_PROFILE: &[(f64, f64)] = &[
-    (0.0, 0.0), (3.2, 0.0), (3.4, 0.05), (3.4, 0.3), (3.2, 0.45), (2.8, 0.55),
-    (2.2, 0.8), (1.8, 1.1), (1.5, 1.4), (1.3, 1.7),
-    (1.2, 2.0), (1.15, 2.5), (1.15, 3.0), (1.2, 3.2),
-    (1.6, 3.4), (2.2, 3.7), (2.8, 4.0), (3.0, 4.2), (3.0, 4.3),
-    (2.6, 4.6), (2.0, 4.9), (1.4, 5.2), (0.8, 5.5),
-    (1.0, 5.6), (1.4, 5.8), (1.5, 6.0), (1.5, 6.2),
-    (1.4, 6.4), (1.1, 6.6), (0.7, 6.7), (0.0, 6.8),
+    (0.0, 0.0),
+    (3.2, 0.0),
+    (3.4, 0.05),
+    (3.4, 0.3),
+    (3.2, 0.45),
+    (2.8, 0.55),
+    (2.2, 0.8),
+    (1.8, 1.1),
+    (1.5, 1.4),
+    (1.3, 1.7),
+    (1.2, 2.0),
+    (1.15, 2.5),
+    (1.15, 3.0),
+    (1.2, 3.2),
+    (1.6, 3.4),
+    (2.2, 3.7),
+    (2.8, 4.0),
+    (3.0, 4.2),
+    (3.0, 4.3),
+    (2.6, 4.6),
+    (2.0, 4.9),
+    (1.4, 5.2),
+    (0.8, 5.5),
+    (1.0, 5.6),
+    (1.4, 5.8),
+    (1.5, 6.0),
+    (1.5, 6.2),
+    (1.4, 6.4),
+    (1.1, 6.6),
+    (0.7, 6.7),
+    (0.0, 6.8),
 ];
 
 const ROOK_PROFILE: &[(f64, f64)] = &[
-    (0.0, 0.0), (3.2, 0.0), (3.4, 0.05), (3.4, 0.3), (3.2, 0.45), (2.8, 0.55),
-    (2.2, 0.8), (1.8, 1.1),
-    (1.6, 1.5), (1.6, 2.0), (1.6, 2.5), (1.6, 3.0), (1.6, 3.5),
-    (1.8, 3.6), (2.4, 3.7), (2.4, 3.8),
+    (0.0, 0.0),
+    (3.2, 0.0),
+    (3.4, 0.05),
+    (3.4, 0.3),
+    (3.2, 0.45),
+    (2.8, 0.55),
+    (2.2, 0.8),
+    (1.8, 1.1),
+    (1.6, 1.5),
+    (1.6, 2.0),
+    (1.6, 2.5),
+    (1.6, 3.0),
+    (1.6, 3.5),
+    (1.8, 3.6),
+    (2.4, 3.7),
+    (2.4, 3.8),
     (2.4, 4.2),
-    (1.7, 4.2), (1.7, 4.6),
-    (2.4, 4.6), (2.4, 5.0),
-    (1.8, 5.0), (0.0, 5.0),
+    (1.7, 4.2),
+    (1.7, 4.6),
+    (2.4, 4.6),
+    (2.4, 5.0),
+    (1.8, 5.0),
+    (0.0, 5.0),
 ];
 
 const BISHOP_PROFILE: &[(f64, f64)] = &[
-    (0.0, 0.0), (3.0, 0.0), (3.2, 0.05), (3.2, 0.3), (3.0, 0.45), (2.6, 0.55),
-    (2.0, 0.8), (1.6, 1.1), (1.3, 1.5),
-    (1.2, 1.8), (1.15, 2.2), (1.15, 2.8), (1.2, 3.0),
-    (1.5, 3.2), (1.8, 3.5), (2.0, 3.7), (2.0, 3.9),
-    (1.8, 4.2), (1.5, 4.5), (1.2, 4.8), (0.9, 5.1),
-    (0.6, 5.4), (0.35, 5.7), (0.15, 6.0),
-    (0.3, 6.1), (0.3, 6.2), (0.15, 6.3), (0.0, 6.3),
+    (0.0, 0.0),
+    (3.0, 0.0),
+    (3.2, 0.05),
+    (3.2, 0.3),
+    (3.0, 0.45),
+    (2.6, 0.55),
+    (2.0, 0.8),
+    (1.6, 1.1),
+    (1.3, 1.5),
+    (1.2, 1.8),
+    (1.15, 2.2),
+    (1.15, 2.8),
+    (1.2, 3.0),
+    (1.5, 3.2),
+    (1.8, 3.5),
+    (2.0, 3.7),
+    (2.0, 3.9),
+    (1.8, 4.2),
+    (1.5, 4.5),
+    (1.2, 4.8),
+    (0.9, 5.1),
+    (0.6, 5.4),
+    (0.35, 5.7),
+    (0.15, 6.0),
+    (0.3, 6.1),
+    (0.3, 6.2),
+    (0.15, 6.3),
+    (0.0, 6.3),
 ];
 
 const KNIGHT_PROFILE: &[(f64, f64)] = &[
-    (0.0, 0.0), (3.0, 0.0), (3.2, 0.05), (3.2, 0.3), (3.0, 0.45), (2.6, 0.55),
-    (2.0, 0.8), (1.6, 1.1), (1.3, 1.4),
-    (1.2, 1.7), (1.15, 2.0), (1.15, 2.5),
-    (1.3, 2.8), (1.6, 3.1), (2.0, 3.4), (2.3, 3.7),
-    (2.4, 4.0), (2.3, 4.3), (2.0, 4.6),
-    (1.6, 4.9), (1.2, 5.2), (0.8, 5.4),
-    (0.5, 5.6), (0.3, 5.8), (0.0, 5.9),
+    (0.0, 0.0),
+    (3.0, 0.0),
+    (3.2, 0.05),
+    (3.2, 0.3),
+    (3.0, 0.45),
+    (2.6, 0.55),
+    (2.0, 0.8),
+    (1.6, 1.1),
+    (1.3, 1.4),
+    (1.2, 1.7),
+    (1.15, 2.0),
+    (1.15, 2.5),
+    (1.3, 2.8),
+    (1.6, 3.1),
+    (2.0, 3.4),
+    (2.3, 3.7),
+    (2.4, 4.0),
+    (2.3, 4.3),
+    (2.0, 4.6),
+    (1.6, 4.9),
+    (1.2, 5.2),
+    (0.8, 5.4),
+    (0.5, 5.6),
+    (0.3, 5.8),
+    (0.0, 5.9),
 ];
 
 const PAWN_PROFILE: &[(f64, f64)] = &[
-    (0.0, 0.0), (2.8, 0.0), (3.0, 0.05), (3.0, 0.3), (2.8, 0.45), (2.4, 0.55),
-    (1.8, 0.8), (1.4, 1.1), (1.1, 1.4),
-    (0.85, 1.7), (0.75, 2.0), (0.75, 2.2),
-    (0.9, 2.4), (1.1, 2.6), (1.4, 2.8), (1.6, 3.0), (1.7, 3.2),
-    (1.75, 3.4), (1.75, 3.6), (1.7, 3.8),
-    (1.6, 4.0), (1.4, 4.2), (1.1, 4.4),
-    (0.8, 4.5), (0.4, 4.6), (0.0, 4.65),
+    (0.0, 0.0),
+    (2.8, 0.0),
+    (3.0, 0.05),
+    (3.0, 0.3),
+    (2.8, 0.45),
+    (2.4, 0.55),
+    (1.8, 0.8),
+    (1.4, 1.1),
+    (1.1, 1.4),
+    (0.85, 1.7),
+    (0.75, 2.0),
+    (0.75, 2.2),
+    (0.9, 2.4),
+    (1.1, 2.6),
+    (1.4, 2.8),
+    (1.6, 3.0),
+    (1.7, 3.2),
+    (1.75, 3.4),
+    (1.75, 3.6),
+    (1.7, 3.8),
+    (1.6, 4.0),
+    (1.4, 4.2),
+    (1.1, 4.4),
+    (0.8, 4.5),
+    (0.4, 4.6),
+    (0.0, 4.65),
 ];
 
 pub fn get_profile(piece: Piece) -> &'static [(f64, f64)] {
@@ -106,7 +227,11 @@ fn interpolate_profile(profile: &[(f64, f64)], lengths: &[f64], t: f64) -> (f64,
     let seg_start = lengths[seg];
     let seg_end = lengths[next];
     let seg_len = seg_end - seg_start;
-    let frac = if seg_len > 1e-9 { (target - seg_start) / seg_len } else { 0.0 };
+    let frac = if seg_len > 1e-9 {
+        (target - seg_start) / seg_len
+    } else {
+        0.0
+    };
     let r = profile[seg].0 + frac * (profile[next].0 - profile[seg].0);
     let y = profile[seg].1 + frac * (profile[next].1 - profile[seg].1);
     (r, y, seg)
@@ -158,7 +283,9 @@ fn render_static(
     for ti in 0..theta_steps {
         let t = ti as f64 / theta_steps as f64;
         let (r, y_local, seg) = interpolate_profile(profile, &lengths, t);
-        if r < 1e-6 { continue; }
+        if r < 1e-6 {
+            continue;
+        }
 
         let next = (seg + 1).min(profile.len() - 1);
         let dr = profile[next].0 - profile[seg].0;
@@ -198,13 +325,17 @@ fn render_static(
             let nz2 = -nx1 * sin_b + nz1 * cos_b;
 
             let denom = z2 + k2;
-            if denom < 0.5 { continue; }
+            if denom < 0.5 {
+                continue;
+            }
             let ooz = 1.0 / denom;
 
             let xp = (w as f64 / 2.0 + scale * ooz * x2) as i32;
             let yp = (h as f64 / 2.0 - scale * ooz * y2) as i32;
 
-            if xp < 0 || xp >= w as i32 || yp < 0 || yp >= h as i32 { continue; }
+            if xp < 0 || xp >= w as i32 || yp < 0 || yp >= h as i32 {
+                continue;
+            }
             let (xi, yi) = (xp as usize, yp as usize);
 
             if ooz > zbuffer[yi][xi] {
@@ -230,11 +361,15 @@ fn render_static(
     let mut edge_buf = vec![vec![false; w]; h];
     for y in 0..h {
         for x in 0..w {
-            if !filled[y][x] { continue; }
+            if !filled[y][x] {
+                continue;
+            }
             // Check if any neighbor is empty → this is an edge pixel
             for dy in -1..=1_i32 {
                 for dx in -1..=1_i32 {
-                    if dx == 0 && dy == 0 { continue; }
+                    if dx == 0 && dy == 0 {
+                        continue;
+                    }
                     let nx = x as i32 + dx;
                     let ny = y as i32 + dy;
                     if nx < 0 || nx >= w as i32 || ny < 0 || ny >= h as i32 {
@@ -246,7 +381,9 @@ fn render_static(
                         break;
                     }
                 }
-                if edge_buf[y][x] { break; }
+                if edge_buf[y][x] {
+                    break;
+                }
             }
         }
     }
@@ -289,7 +426,10 @@ pub fn color_to_rgb(c: Color) -> (u8, u8, u8) {
     match c {
         Color::Rgb(r, g, b) => (r, g, b),
         Color::Indexed(idx) => match idx {
-            232..=255 => { let v = (idx - 232) * 10 + 8; (v, v, v) }
+            232..=255 => {
+                let v = (idx - 232) * 10 + 8;
+                (v, v, v)
+            }
             16..=231 => {
                 let i = idx - 16;
                 let b = (i % 6) * 51;
@@ -322,7 +462,9 @@ pub fn draw_piece(
 ) {
     let w = cw as usize;
     let hires_h = (ch as usize) * 2;
-    if w < 2 || hires_h < 2 { return; }
+    if w < 2 || hires_h < 2 {
+        return;
+    }
 
     let (lum, edges) = render_static(piece, w, hires_h);
     let base_rgb = color_to_rgb(piece_color);
@@ -338,9 +480,13 @@ pub fn draw_piece(
         for col in 0..cw {
             let px_x = x + col;
             let px_y = y + row;
-            if px_x >= area.x + area.width || px_y >= area.y + area.height
-                || px_x < area.x || px_y < area.y
-            { continue; }
+            if px_x >= area.x + area.width
+                || px_y >= area.y + area.height
+                || px_x < area.x
+                || px_y < area.y
+            {
+                continue;
+            }
 
             let top_r = (row * 2) as usize;
             let bot_r = (row * 2 + 1) as usize;
@@ -354,12 +500,20 @@ pub fn draw_piece(
             let top_edge = top_on && edges[top_r][c];
             let bot_edge = bot_on && bot_r < hires_h && edges[bot_r][c];
 
-            let top_col = if top_edge { outline_color }
-                          else if top_on { lum_to_piece_color(top_lum, base_rgb) }
-                          else { sq_bg };
-            let bot_col = if bot_edge { outline_color }
-                          else if bot_on { lum_to_piece_color(bot_lum, base_rgb) }
-                          else { sq_bg };
+            let top_col = if top_edge {
+                outline_color
+            } else if top_on {
+                lum_to_piece_color(top_lum, base_rgb)
+            } else {
+                sq_bg
+            };
+            let bot_col = if bot_edge {
+                outline_color
+            } else if bot_on {
+                lum_to_piece_color(bot_lum, base_rgb)
+            } else {
+                sq_bg
+            };
 
             let (ch_char, style) = match (top_on, bot_on) {
                 (true, true) => ('\u{2580}', Style::default().fg(top_col).bg(bot_col)),
@@ -379,17 +533,17 @@ pub fn draw_piece(
 /// Unicode chess symbol for a piece (used in captured lists, status, etc.)
 pub fn piece_char(piece: Piece, color: ChessColor) -> char {
     match (color, piece) {
-        (ChessColor::White, Piece::King)   => '\u{2654}',
-        (ChessColor::White, Piece::Queen)  => '\u{2655}',
-        (ChessColor::White, Piece::Rook)   => '\u{2656}',
+        (ChessColor::White, Piece::King) => '\u{2654}',
+        (ChessColor::White, Piece::Queen) => '\u{2655}',
+        (ChessColor::White, Piece::Rook) => '\u{2656}',
         (ChessColor::White, Piece::Bishop) => '\u{2657}',
         (ChessColor::White, Piece::Knight) => '\u{2658}',
-        (ChessColor::White, Piece::Pawn)   => '\u{2659}',
-        (ChessColor::Black, Piece::King)   => '\u{265a}',
-        (ChessColor::Black, Piece::Queen)  => '\u{265b}',
-        (ChessColor::Black, Piece::Rook)   => '\u{265c}',
+        (ChessColor::White, Piece::Pawn) => '\u{2659}',
+        (ChessColor::Black, Piece::King) => '\u{265a}',
+        (ChessColor::Black, Piece::Queen) => '\u{265b}',
+        (ChessColor::Black, Piece::Rook) => '\u{265c}',
         (ChessColor::Black, Piece::Bishop) => '\u{265d}',
         (ChessColor::Black, Piece::Knight) => '\u{265e}',
-        (ChessColor::Black, Piece::Pawn)   => '\u{265f}',
+        (ChessColor::Black, Piece::Pawn) => '\u{265f}',
     }
 }

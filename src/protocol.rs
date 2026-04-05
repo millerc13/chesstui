@@ -30,23 +30,53 @@ pub enum ClientMessage {
 #[serde(tag = "type")]
 pub enum ServerMessage {
     AuthCodeSent,
-    Authenticated { token: String, user: UserInfo },
-    AuthError { reason: String },
+    Authenticated {
+        token: String,
+        user: UserInfo,
+    },
+    AuthError {
+        reason: String,
+    },
     NeedDisplayName,
     Searching,
-    GameStart { game_id: String, opponent: String, my_color: String },
-    MoveMade { game_id: String, mv: String },
-    MoveRejected { reason: String },
-    GameOver { game_id: String, result: String, detail: String },
-    DrawOffered { game_id: String },
+    GameStart {
+        game_id: String,
+        opponent: String,
+        my_color: String,
+    },
+    MoveMade {
+        game_id: String,
+        mv: String,
+    },
+    MoveRejected {
+        reason: String,
+    },
+    GameOver {
+        game_id: String,
+        result: String,
+        detail: String,
+    },
+    DrawOffered {
+        game_id: String,
+    },
     NeedPassword,
     PasswordSet,
-    PreferencesLoaded { preferences: serde_json::Value },
+    PreferencesLoaded {
+        preferences: serde_json::Value,
+    },
     PreferencesUpdated,
-    FriendsList { friends: Vec<FriendInfo> },
-    FriendAdded { friend: FriendInfo },
-    FriendRemoved { friend_id: String },
-    Error { message: String },
+    FriendsList {
+        friends: Vec<FriendInfo>,
+    },
+    FriendAdded {
+        friend: FriendInfo,
+    },
+    FriendRemoved {
+        friend_id: String,
+    },
+    Error {
+        message: String,
+    },
     Pong,
 }
 
